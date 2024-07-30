@@ -1,0 +1,77 @@
+// Copyright (c) 2023 - Restate Software, Inc., Restate GmbH
+//
+// This file is part of the Restate e2e tests,
+// which are released under the MIT license.
+//
+// You can find a copy of the license in file LICENSE in the root
+// directory of this repository or package, or at
+// https://github.com/restatedev/e2e/blob/main/LICENSE
+
+package dev.restate.sdktesting.tests
+
+import dev.restate.admin.api.ServiceApi
+import dev.restate.admin.client.ApiClient
+import dev.restate.admin.model.ModifyServiceRequest
+import dev.restate.sdk.client.Client
+import dev.restate.sdk.client.IngressException
+import dev.restate.sdktesting.contracts.AddRequest
+import dev.restate.sdktesting.contracts.CounterClient
+import dev.restate.sdktesting.contracts.CounterDefinitions
+import dev.restate.sdktesting.contracts.ProxyCounterClient
+import dev.restate.sdktesting.infra.*
+import java.net.URL
+import java.util.*
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runTest
+import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
+import org.assertj.core.api.InstanceOfAssertFactories
+import org.awaitility.kotlin.await
+import org.awaitility.kotlin.untilAsserted
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.extension.RegisterExtension
+
+/** Test supporting private services */
+class PrivateServiceTest {
+
+  companion object {
+    @RegisterExtension
+    val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
+      withServiceSpec(ServiceSpec.DEFAULT)
+    }
+  }
+
+  @Test
+  fun privateService(
+      @InjectMetaURL metaURL: URL,
+      @InjectClient ingressClient: Client,
+  ) = runTest {
+    val adminServiceClient = ServiceApi(ApiClient().setHost(metaURL.host).setPort(metaURL.port))
+    val counterId = UUID.randomUUID().toString()
+    val counterClient = CounterClient.fromClient(ingressClient, counterId)
+
+    counterClient.add(1)
+
+    // Make the service private
+    adminServiceClient.modifyService(
+        CounterDefinitions.SERVICE_NAME, ModifyServiceRequest()._public(false))
+
+    // Wait for the service to be private
+    await untilAsserted
+        {
+          assertThatThrownBy { runBlocking { counterClient.get() } }
+              .asInstanceOf(InstanceOfAssertFactories.type(IngressException::class.java))
+              .returns(400, IngressException::getStatusCode)
+        }
+
+    // Send a request through the proxy client
+    ProxyCounterClient.fromClient(ingressClient).addInBackground(AddRequest(counterId, 1))
+
+    // Make the service public again
+    adminServiceClient.modifyService(
+        CounterDefinitions.SERVICE_NAME, ModifyServiceRequest()._public(true))
+
+    // Wait to get the correct count
+    await untilAsserted { runBlocking { assertThat(counterClient.get()).isEqualTo(2L) } }
+  }
+}
