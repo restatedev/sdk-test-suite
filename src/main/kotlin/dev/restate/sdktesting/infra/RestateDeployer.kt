@@ -195,7 +195,8 @@ private constructor(
                     waitRuntimeHealthy()
                   })) +
           serviceContainers.map {
-            it.key to ContainerHandle(it.value.second.withImagePullPolicy(imagePullPolicy()))
+            it.key to
+                ContainerHandle(it.value.second.withImagePullPolicy(PullPolicy.defaultPolicy()))
           } +
           additionalContainers.map {
             it.key to ContainerHandle(it.value.withImagePullPolicy(imagePullPolicy()))
