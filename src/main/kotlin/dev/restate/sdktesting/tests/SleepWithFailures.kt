@@ -31,7 +31,7 @@ import org.junit.jupiter.api.extension.RegisterExtension
 // -- Sleep tests with terminations/killings of runtime/service endpoint
 
 @Tag("always-suspending")
-class SleepWithFailuresTest {
+class SleepWithFailures {
 
   companion object {
     @RegisterExtension

@@ -28,7 +28,7 @@ import org.junit.jupiter.api.parallel.Execution
 import org.junit.jupiter.api.parallel.ExecutionMode
 
 @Tag("always-suspending")
-class WorkflowAPITest {
+class WorkflowAPI {
 
   companion object {
     @RegisterExtension

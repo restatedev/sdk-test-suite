@@ -25,6 +25,8 @@ import java.net.URL
 import java.util.*
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.Producer
 import org.apache.kafka.clients.producer.ProducerRecord
@@ -118,9 +120,9 @@ class KafkaIngressTest {
         "PLAINTEXT://localhost:$kafkaPort",
         EVENT_HANDLER_TOPIC,
         listOf(
-            null to Utils.writeValueAsStringUsingJackson(TestEvent(counter, 1)),
-            null to Utils.writeValueAsStringUsingJackson(TestEvent(counter, 2)),
-            null to Utils.writeValueAsStringUsingJackson(TestEvent(counter, 3))))
+            null to Json.encodeToString(TestEvent(counter, 1)),
+            null to Json.encodeToString(TestEvent(counter, 2)),
+            null to Json.encodeToString(TestEvent(counter, 3))))
 
     // Now wait for the update to be visible
     await untilCallTo

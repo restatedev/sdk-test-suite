@@ -5,6 +5,7 @@ import dev.restate.sdktesting.infra.getGlobalConfig
 import dev.restate.sdktesting.infra.registerGlobalConfig
 import java.io.PrintWriter
 import java.nio.file.Path
+import kotlin.jvm.optionals.getOrNull
 import kotlin.time.Duration.Companion.milliseconds
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.ThreadContext
@@ -14,6 +15,8 @@ import org.apache.logging.log4j.core.config.builder.impl.BuiltConfiguration
 import org.junit.platform.engine.Filter
 import org.junit.platform.engine.TestExecutionResult
 import org.junit.platform.engine.discovery.DiscoverySelectors
+import org.junit.platform.engine.support.descriptor.ClassSource
+import org.junit.platform.engine.support.descriptor.MethodSource
 import org.junit.platform.launcher.LauncherConstants
 import org.junit.platform.launcher.TagFilter
 import org.junit.platform.launcher.TestExecutionListener
@@ -24,12 +27,16 @@ import org.junit.platform.launcher.listeners.SummaryGeneratingListener
 import org.junit.platform.launcher.listeners.TestExecutionSummary
 import org.junit.platform.reporting.open.xml.OpenTestReportGeneratingListener
 
-class TestConfiguration(
+class TestSuite(
     val name: String,
     val additionalEnvs: Map<String, String>,
     val junitIncludeTags: String
 ) {
-  fun runTests(baseReportDir: Path, filters: List<Filter<*>>): TestExecutionSummary {
+  fun runTests(
+      baseReportDir: Path,
+      filters: List<Filter<*>>,
+      printToStdout: Boolean
+  ): TestExecutionSummary {
     val reportDir = baseReportDir.resolve(name)
 
     println(
@@ -43,7 +50,7 @@ class TestConfiguration(
     registerGlobalConfig(getGlobalConfig().copy(additionalRuntimeEnvs = additionalEnvs))
 
     // Prepare Log4j2 configuration
-    Configurator.reconfigure(prepareLog4j2Config(reportDir))
+    Configurator.reconfigure(prepareLog4j2Config(reportDir, printToStdout))
 
     // Prepare launch request
     val request =
@@ -75,8 +82,15 @@ class TestConfiguration(
           val TEST_NAME = "test"
 
           override fun executionStarted(testIdentifier: TestIdentifier) {
-            ThreadContext.put(TEST_NAME, testIdentifier.displayName)
-            super.executionStarted(testIdentifier)
+            val displayName =
+                when (val source = testIdentifier.source.getOrNull()) {
+                  is ClassSource -> source.className
+                  is MethodSource -> "${source.className}#${source.methodName}"
+                  else -> null
+                }
+            if (displayName != null) {
+              ThreadContext.put(TEST_NAME, displayName)
+            }
           }
 
           override fun executionFinished(
@@ -113,7 +127,7 @@ class TestConfiguration(
     return report
   }
 
-  private fun prepareLog4j2Config(reportDir: Path): BuiltConfiguration {
+  private fun prepareLog4j2Config(reportDir: Path, printToStdout: Boolean): BuiltConfiguration {
     val builder = ConfigurationBuilderFactory.newConfigurationBuilder()
 
     val layout = builder.newLayout("PatternLayout")
@@ -122,20 +136,31 @@ class TestConfiguration(
     val fileAppender = builder.newAppender("log", "File")
     fileAppender.addAttribute("fileName", reportDir.resolve("testrunner.log").toString())
     fileAppender.add(layout)
-    builder.add(fileAppender)
 
     val rootLogger = builder.newRootLogger(Level.INFO)
     rootLogger.add(builder.newAppenderRef("log"))
-    builder.add(rootLogger)
 
     val testContainersLogger = builder.newLogger("org.testcontainers", Level.INFO)
     testContainersLogger.add(builder.newAppenderRef("log"))
     testContainersLogger.addAttribute("additivity", false)
-    builder.add(testContainersLogger)
 
     val restateLogger = builder.newLogger("dev.restate", Level.DEBUG)
     restateLogger.add(builder.newAppenderRef("log"))
     restateLogger.addAttribute("additivity", false)
+
+    if (printToStdout) {
+      val consoleAppender = builder.newAppender("stdout", "Console")
+      consoleAppender.add(layout)
+      builder.add(consoleAppender)
+
+      rootLogger.add(builder.newAppenderRef("stdout"))
+      testContainersLogger.add(builder.newAppenderRef("stdout"))
+      restateLogger.add(builder.newAppenderRef("stdout"))
+    }
+
+    builder.add(fileAppender)
+    builder.add(rootLogger)
+    builder.add(testContainersLogger)
     builder.add(restateLogger)
 
     return builder.build()

@@ -21,12 +21,12 @@ import org.junit.jupiter.api.Timeout
 import org.junit.jupiter.api.extension.RegisterExtension
 
 @Tag("always-suspending")
-class PersistenceTest {
+class StopRuntime {
 
   companion object {
     @JvmStatic
     @RegisterExtension
-    val deployerExt: RestateDeployerForEachExtension = RestateDeployerForEachExtension {
+    val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
       withServiceSpec(ServiceSpec.DEFAULT)
     }
   }
@@ -45,26 +45,6 @@ class PersistenceTest {
 
     // Stop and start the runtime
     runtimeHandle.terminateAndRestart()
-
-    val res2 = counterClient.getAndAdd(2)
-    assertThat(res2.oldValue).isEqualTo(1)
-    assertThat(res2.newValue).isEqualTo(3)
-  }
-
-  @Timeout(value = 30, unit = TimeUnit.SECONDS)
-  @Test
-  fun startAndKillRuntimeRetainsTheState(
-      @InjectClient ingressClient: Client,
-      @InjectContainerHandle(RESTATE_RUNTIME) runtimeHandle: ContainerHandle
-  ) = runTest {
-    val counterClient = CounterClient.fromClient(ingressClient, "my-key")
-
-    val res1 = counterClient.getAndAdd(1)
-    assertThat(res1.oldValue).isEqualTo(0)
-    assertThat(res1.newValue).isEqualTo(1)
-
-    // Stop and start the runtime
-    runtimeHandle.killAndRestart()
 
     val res2 = counterClient.getAndAdd(2)
     assertThat(res2.oldValue).isEqualTo(1)

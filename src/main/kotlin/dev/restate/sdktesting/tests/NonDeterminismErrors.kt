@@ -30,7 +30,7 @@ import org.junit.jupiter.params.provider.ValueSource
 
 /** Test non-determinism/journal mismatch checks in the SDKs. */
 @Tag("only-always-suspending")
-class NonDeterminismTest {
+class NonDeterminismErrors {
   companion object {
     @RegisterExtension
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {

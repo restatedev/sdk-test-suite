@@ -29,7 +29,7 @@ import org.junit.jupiter.api.parallel.ExecutionMode
 
 @Tag("always-suspending")
 @Tag("lazy-state")
-class StateTest {
+class State {
 
   companion object {
     @RegisterExtension

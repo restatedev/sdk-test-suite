@@ -11,11 +11,11 @@ package dev.restate.sdktesting.tests
 
 import dev.restate.sdk.client.Client
 import dev.restate.sdktesting.contracts.CoordinatorClient
-import dev.restate.sdktesting.infra.*
-import java.time.Duration
+import dev.restate.sdktesting.infra.InjectClient
+import dev.restate.sdktesting.infra.RestateDeployerExtension
+import dev.restate.sdktesting.infra.ServiceSpec
 import kotlinx.coroutines.test.runTest
 import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.RegisterExtension
@@ -23,7 +23,8 @@ import org.junit.jupiter.api.parallel.Execution
 import org.junit.jupiter.api.parallel.ExecutionMode
 
 @Tag("always-suspending")
-class AwaitTimeoutTest {
+class ServiceToServiceCommunication {
+
   companion object {
     @RegisterExtension
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
@@ -32,11 +33,8 @@ class AwaitTimeoutTest {
   }
 
   @Test
-  @DisplayName("Test Awaitable#await(Duration)")
   @Execution(ExecutionMode.CONCURRENT)
-  fun timeout(@InjectClient ingressClient: Client) = runTest {
-    val timeout = Duration.ofMillis(100L)
-
-    assertThat(CoordinatorClient.fromClient(ingressClient).timeout(timeout.toMillis())).isTrue
+  fun synchronousCall(@InjectClient ingressClient: Client) = runTest {
+    assertThat(CoordinatorClient.fromClient(ingressClient).proxy()).isEqualTo("pong")
   }
 }

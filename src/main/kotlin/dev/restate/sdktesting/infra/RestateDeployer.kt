@@ -419,12 +419,20 @@ private constructor(
   }
 
   fun getContainerHandle(hostName: String): ContainerHandle {
-    return deployedContainers[hostName]
-        ?: throw java.lang.IllegalArgumentException(
-            "Cannot find container $hostName.\n" +
-                "If you're running the tests suite using the `debug` command, " +
-                "then this is expected for this test, " +
-                "as it requires starting/stopping the service container.")
+    if (!deployedContainers.containsKey(hostName)) {
+      // If it's service spec with local forward, then this is expected
+      if (serviceSpecs
+          .find { it.name == hostName }
+          ?.let {
+            config.getServiceDeploymentConfig(it.name) is LocalForwardServiceDeploymentConfig
+          } == true) {
+        throw java.lang.IllegalArgumentException(
+            "This test cannot run in debug mode, because it requires to manually start/stop the service container '$hostName'. Run the test without run mode.")
+      }
+      throw IllegalArgumentException(
+          "Cannot find container $hostName. Most likely, there is a bug in the test code.")
+    }
+    return deployedContainers[hostName]!!
   }
 
   private fun imagePullPolicy(): ImagePullPolicy {

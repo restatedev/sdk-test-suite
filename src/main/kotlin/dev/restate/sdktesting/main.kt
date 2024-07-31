@@ -15,7 +15,7 @@ import com.github.ajalt.clikt.parameters.options.*
 import com.github.ajalt.clikt.parameters.types.enum
 import com.github.ajalt.clikt.parameters.types.path
 import dev.restate.sdktesting.infra.*
-import dev.restate.sdktesting.junit.Configurations
+import dev.restate.sdktesting.junit.TestSuites
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -27,6 +27,7 @@ import kotlin.system.exitProcess
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.serialization.Serializable
+import org.junit.platform.engine.Filter
 import org.junit.platform.engine.discovery.ClassNameFilter
 import org.junit.platform.engine.support.descriptor.ClassSource
 
@@ -75,12 +76,12 @@ class TestRunnerOptions : OptionGroup() {
 }
 
 class FilterOptions : OptionGroup() {
-  val testConfig by
+  val testSuite by
       option()
           .required()
           .help(
-              "Test configuration to run. Available: ${listOf("all") + Configurations.allConfigurations().map { it.name }}")
-  val testName by option().help("FQCN of the test to run for the given configuration")
+              "Test suite to run. Available: ${listOf("all") + TestSuites.allSuites().map { it.name }}")
+  val testName by option().help("FQCN of the test to run for the given suite")
 }
 
 abstract class TestRunCommand(help: String) : CliktCommand(help) {
@@ -94,6 +95,7 @@ class Run :
 Run test suite, executing the service as container.
 """
             .trimIndent()) {
+  val filter by FilterOptions().cooccurring()
   val exclusionsFile by option().help("File containing the excluded tests")
   val imageName by argument()
 
@@ -106,7 +108,7 @@ Run test suite, executing the service as container.
     registerGlobalConfig(testRunnerOptions.applyToDeployerConfig(restateDeployerConfig))
 
     // Resolve test configurations
-    val testConfigurations = Configurations.resolveConfigurations("all")
+    val testSuites = TestSuites.resolveSuites(filter?.testSuite)
 
     // Load exclusions file
     val loadedExclusions: ExclusionsFile =
@@ -126,11 +128,16 @@ Run test suite, executing the service as container.
 
     val aggregateResults = AggregateResults()
     val failedTests = mutableMapOf<String, List<String>>()
-    for (testConfiguration in testConfigurations) {
-      val exclusions = loadedExclusions.exclusions[testConfiguration.name] ?: emptyList()
-      val filters = exclusions.map { ClassNameFilter.excludeClassNamePatterns(it) }
+    for (testSuite in testSuites) {
+      val exclusions = loadedExclusions.exclusions[testSuite.name] ?: emptyList()
+      val exclusionsFilters = exclusions.map { ClassNameFilter.excludeClassNamePatterns(it) }
+      val cliOptionFilter =
+          filter?.testName?.let { listOf(ClassNameFilter.includeClassNamePatterns(it)) }
+              ?: emptyList<Filter<*>>()
 
-      val report = testConfiguration.runTests(testRunnerOptions.reportDir, filters)
+      val report =
+          testSuite.runTests(
+              testRunnerOptions.reportDir, exclusionsFilters + cliOptionFilter, false)
 
       aggregateResults.succededTests += report.testsSucceededCount
       aggregateResults.startedTests += report.testsStartedCount
@@ -142,7 +149,7 @@ Run test suite, executing the service as container.
           report.timeFinished.milliseconds - report.timeStarted.milliseconds
 
       if (report.failures.isNotEmpty() || exclusions.isNotEmpty()) {
-        failedTests[testConfiguration.name] =
+        failedTests[testSuite.name] =
             report.failures
                 .mapNotNull { it.testIdentifier.source.getOrNull() }
                 .mapNotNull { if (it is ClassSource) it else null }
@@ -178,7 +185,11 @@ class Debug :
 Run test suite, without executing the service inside a container.
 """
             .trimIndent()) {
-  val filter by FilterOptions().cooccurring()
+  val testSuite by
+      option()
+          .default(TestSuites.DEFAULT_SUITE.name)
+          .help("Test suite to run. Available: ${TestSuites.allSuites().map { it.name }}")
+  val testName by option().required().help("FQCN of the test to run for the given suite")
   val localContainers by
       argument()
           .convert { localContainerSpec ->
@@ -202,24 +213,13 @@ Run test suite, without executing the service inside a container.
     registerGlobalConfig(testRunnerOptions.applyToDeployerConfig(restateDeployerConfig))
 
     // Resolve test configurations
-    val testConfigurations = Configurations.resolveConfigurations(filter?.testConfig)
-    val testFilters =
-        if (filter?.testName != null) {
-          listOf(ClassNameFilter.includeClassNamePatterns(filter!!.testName!!))
-        } else {
-          emptyList()
-        }
+    val testSuite = TestSuites.resolveSuites(testSuite)[0]
+    val testFilters = listOf(ClassNameFilter.includeClassNamePatterns(testName))
 
-    if (commonConfig.verbose) {
-      println("Going to execute test configurations ${testConfigurations.map { it.name }}")
-    }
-
-    for (testConfiguration in testConfigurations) {
-      val report = testConfiguration.runTests(testRunnerOptions.reportDir, testFilters)
-      if (report.testsFailedCount != 0L) {
-        // Exit
-        exitProcess(1)
-      }
+    val report = testSuite.runTests(testRunnerOptions.reportDir, testFilters, true)
+    if (report.testsFailedCount != 0L) {
+      // Exit
+      exitProcess(1)
     }
   }
 }

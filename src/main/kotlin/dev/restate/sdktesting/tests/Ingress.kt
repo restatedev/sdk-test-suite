@@ -34,7 +34,7 @@ import org.junit.jupiter.api.extension.RegisterExtension
 import org.junit.jupiter.api.parallel.Execution
 import org.junit.jupiter.api.parallel.ExecutionMode
 
-class IngressTest {
+class Ingress {
 
   companion object {
     @RegisterExtension

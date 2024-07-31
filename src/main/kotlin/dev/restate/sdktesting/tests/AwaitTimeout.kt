@@ -11,21 +11,19 @@ package dev.restate.sdktesting.tests
 
 import dev.restate.sdk.client.Client
 import dev.restate.sdktesting.contracts.CoordinatorClient
-import dev.restate.sdktesting.contracts.CoordinatorComplexRequest
-import dev.restate.sdktesting.infra.InjectClient
-import dev.restate.sdktesting.infra.RestateDeployerExtension
-import dev.restate.sdktesting.infra.ServiceSpec
+import dev.restate.sdktesting.infra.*
 import java.time.Duration
-import kotlin.system.measureNanoTime
 import kotlinx.coroutines.test.runTest
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.RegisterExtension
 import org.junit.jupiter.api.parallel.Execution
 import org.junit.jupiter.api.parallel.ExecutionMode
 
-class SampleWorkflowTest {
+@Tag("always-suspending")
+class AwaitTimeout {
   companion object {
     @RegisterExtension
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
@@ -34,20 +32,11 @@ class SampleWorkflowTest {
   }
 
   @Test
-  @DisplayName("Sample workflow with sleep, side effect, call and one way call")
+  @DisplayName("Test Awaitable#await(Duration)")
   @Execution(ExecutionMode.CONCURRENT)
-  fun sampleWorkflow(@InjectClient ingressClient: Client) = runTest {
-    val sleepDuration = Duration.ofMillis(100L)
+  fun timeout(@InjectClient ingressClient: Client) = runTest {
+    val timeout = Duration.ofMillis(100L)
 
-    val elapsed = measureNanoTime {
-      val value = "foobar"
-      val response =
-          CoordinatorClient.fromClient(ingressClient)
-              .complex(CoordinatorComplexRequest(sleepDuration.toMillis(), value))
-
-      assertThat(response).isEqualTo(value)
-    }
-
-    assertThat(Duration.ofNanos(elapsed)).isGreaterThanOrEqualTo(sleepDuration)
+    assertThat(CoordinatorClient.fromClient(ingressClient).timeout(timeout.toMillis())).isTrue
   }
 }

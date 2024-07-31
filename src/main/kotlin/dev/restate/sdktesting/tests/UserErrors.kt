@@ -28,7 +28,7 @@ import org.junit.jupiter.api.parallel.ExecutionMode
 private const val SUCCESS_ATTEMPT = 4
 
 @Tag("always-suspending")
-class ErrorsTest {
+class UserErrors {
 
   companion object {
     @RegisterExtension

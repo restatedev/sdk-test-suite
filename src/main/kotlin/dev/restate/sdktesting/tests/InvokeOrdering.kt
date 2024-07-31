@@ -28,7 +28,7 @@ import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
 
 /** Test the ordering is respected between invoke and background invoke */
-class InvokeOrderingTest {
+class InvokeOrdering {
   companion object {
     @RegisterExtension
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {

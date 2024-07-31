@@ -25,7 +25,7 @@ import org.junit.jupiter.api.parallel.ExecutionMode
 
 @Tag("always-suspending")
 @Tag("timers")
-class SimpleSleepTest {
+class Sleep {
 
   companion object {
     @RegisterExtension

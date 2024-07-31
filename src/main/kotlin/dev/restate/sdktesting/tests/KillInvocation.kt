@@ -25,7 +25,7 @@ import org.awaitility.kotlin.until
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.RegisterExtension
 
-class KillTestInvocationTest {
+class KillInvocation {
 
   companion object {
     @RegisterExtension

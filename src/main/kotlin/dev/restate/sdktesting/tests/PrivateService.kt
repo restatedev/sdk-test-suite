@@ -32,7 +32,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.RegisterExtension
 
 /** Test supporting private services */
-class PrivateServiceTest {
+class PrivateService {
 
   companion object {
     @RegisterExtension

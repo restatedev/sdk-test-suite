@@ -10,48 +10,44 @@
 package dev.restate.sdktesting.tests
 
 import dev.restate.sdk.client.Client
-import dev.restate.sdktesting.contracts.CounterClient
+import dev.restate.sdktesting.contracts.CoordinatorClient
+import dev.restate.sdktesting.contracts.CoordinatorComplexRequest
 import dev.restate.sdktesting.infra.InjectClient
 import dev.restate.sdktesting.infra.RestateDeployerExtension
 import dev.restate.sdktesting.infra.ServiceSpec
-import java.util.*
+import java.time.Duration
+import kotlin.system.measureNanoTime
 import kotlinx.coroutines.test.runTest
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.RegisterExtension
 import org.junit.jupiter.api.parallel.Execution
 import org.junit.jupiter.api.parallel.ExecutionMode
 
-class RequestSigningTest {
-
+class SampleWorkflow {
   companion object {
-    const val E2E_REQUEST_SIGNING_ENV = "E2E_REQUEST_SIGNING"
-    const val PRIVATE_KEY =
-        """
------BEGIN PRIVATE KEY-----
-MC4CAQAwBQYDK2VwBCIEIHsQRVQ+AZX9/Yy1b0Zw+OA+bb7xDxGsAd5kB45jZhoc
------END PRIVATE KEY-----
-"""
-    const val SIGNING_KEY = "publickeyv1_ChjENKeMvCtRnqG2mrBK1HmPKufgFUc98K8B3ononQvp"
-
     @RegisterExtension
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
-      withCopyToContainer("/a.pem", PRIVATE_KEY)
-      withEnv("RESTATE_REQUEST_IDENTITY_PRIVATE_KEY_PEM_FILE", "/a.pem")
-      withServiceSpec(
-          ServiceSpec.builder("service-with-request-signing")
-              .withEnv(E2E_REQUEST_SIGNING_ENV, SIGNING_KEY)
-              .build())
+      withServiceSpec(ServiceSpec.DEFAULT)
     }
   }
 
   @Test
+  @DisplayName("Sample workflow with sleep, side effect, call and one way call")
   @Execution(ExecutionMode.CONCURRENT)
-  fun requestSigningPass(@InjectClient ingressClient: Client) = runTest {
-    val counterName = UUID.randomUUID().toString()
-    val client = CounterClient.fromClient(ingressClient, counterName)
+  fun sampleWorkflow(@InjectClient ingressClient: Client) = runTest {
+    val sleepDuration = Duration.ofMillis(100L)
 
-    client.add(1)
-    assertThat(client.get()).isEqualTo(1)
+    val elapsed = measureNanoTime {
+      val value = "foobar"
+      val response =
+          CoordinatorClient.fromClient(ingressClient)
+              .complex(CoordinatorComplexRequest(sleepDuration.toMillis(), value))
+
+      assertThat(response).isEqualTo(value)
+    }
+
+    assertThat(Duration.ofNanos(elapsed)).isGreaterThanOrEqualTo(sleepDuration)
   }
 }
