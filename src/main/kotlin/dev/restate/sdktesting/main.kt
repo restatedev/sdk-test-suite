@@ -38,6 +38,7 @@ import kotlinx.serialization.Serializable
 import org.junit.platform.engine.Filter
 import org.junit.platform.engine.discovery.ClassNameFilter
 import org.junit.platform.engine.support.descriptor.ClassSource
+import org.junit.platform.engine.support.descriptor.MethodSource
 
 data class CommonConfig(var verbose: Boolean = false)
 
@@ -136,6 +137,7 @@ Run test suite, executing the service as container.
 
     val aggregateResults = AggregateResults()
     val failedTests = mutableMapOf<String, List<String>>()
+    var newFailures = false
     for (testSuite in testSuites) {
       val exclusions = loadedExclusions.exclusions[testSuite.name] ?: emptyList()
       val exclusionsFilters = exclusions.map { ClassNameFilter.excludeClassNamePatterns(it) }
@@ -160,8 +162,15 @@ Run test suite, executing the service as container.
         failedTests[testSuite.name] =
             report.failures
                 .mapNotNull { it.testIdentifier.source.getOrNull() }
-                .mapNotNull { if (it is ClassSource) it else null }
-                .map { it.className!! } + exclusions
+                .mapNotNull {
+                  when (it) {
+                    is ClassSource -> it.className!!
+                    is MethodSource -> it.className!!
+                    else -> null
+                  }
+                }
+                .distinct() + exclusions
+        newFailures = true
       }
     }
 
@@ -180,7 +189,7 @@ Run test suite, executing the service as container.
         """
             .trimIndent())
 
-    if (failedTests.isNotEmpty()) {
+    if (newFailures) {
       // Exit
       exitProcess(1)
     }

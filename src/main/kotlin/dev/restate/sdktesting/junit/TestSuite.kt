@@ -33,7 +33,7 @@ import org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder
 import org.junit.platform.launcher.core.LauncherFactory
 import org.junit.platform.launcher.listeners.SummaryGeneratingListener
 import org.junit.platform.launcher.listeners.TestExecutionSummary
-import org.junit.platform.reporting.open.xml.OpenTestReportGeneratingListener
+import org.junit.platform.reporting.legacy.xml.LegacyXmlReportGeneratingListener
 
 class TestSuite(
     val name: String,
@@ -66,9 +66,6 @@ class TestSuite(
             .selectors(DiscoverySelectors.selectPackage("dev.restate.sdktesting.tests"))
             .filters(TagFilter.includeTags(junitIncludeTags))
             .filters(*filters.toTypedArray())
-            // OpenXML reporting
-            .configurationParameter("junit.platform.reporting.open.xml.enabled", "true")
-            .configurationParameter("junit.platform.reporting.output.dir", reportDir.toString())
             // Redirect STDOUT/STDERR
             .configurationParameter(LauncherConstants.CAPTURE_STDOUT_PROPERTY_NAME, "true")
             .configurationParameter(LauncherConstants.CAPTURE_STDERR_PROPERTY_NAME, "true")
@@ -78,13 +75,16 @@ class TestSuite(
             .build()
 
     // Configure listeners
+    val errWriter = PrintWriter(System.err)
+    // TODO replace this with our own listener
     val summaryListener = SummaryGeneratingListener()
-    val xmlReportListener = OpenTestReportGeneratingListener()
+    // TODO replace this with our own xml writer
+    val xmlReportListener = LegacyXmlReportGeneratingListener(reportDir, errWriter)
     val redirectStdoutAndStderrListener =
         RedirectStdoutAndStderrListener(
             reportDir.resolve("testrunner.stdout"),
             reportDir.resolve("testrunner.stderr"),
-            PrintWriter(System.err))
+            errWriter)
     val injectLoggingContextListener =
         object : TestExecutionListener {
           val TEST_NAME = "test"
