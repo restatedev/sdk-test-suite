@@ -170,6 +170,8 @@ Run test suite, executing the service as container.
                   }
                 }
                 .distinct() + exclusions
+      }
+      if (report.failures.isNotEmpty()) {
         newFailures = true
       }
     }
