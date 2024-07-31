@@ -8,6 +8,7 @@ plugins {
 
   id("com.diffplug.spotless") version "6.22.0"
   id("com.github.johnrengelman.shadow") version "8.1.1"
+  id("com.github.jk1.dependency-license-report") version "2.8"
 }
 
 group = "dev.restate.sdktesting"
@@ -85,12 +86,38 @@ spotless {
   kotlin {
     ktfmt()
     targetExclude("build/generated/**/*.kt")
+    licenseHeaderFile("$rootDir/config/license-header")
   }
   kotlinGradle { ktfmt() }
   java {
     googleJavaFormat()
     targetExclude("build/generated/**/*.java")
+    licenseHeaderFile("$rootDir/config/license-header")
   }
+}
+
+tasks.named("check") { dependsOn("checkLicense") }
+
+licenseReport {
+  renderers = arrayOf(com.github.jk1.license.render.CsvReportRenderer())
+
+  excludeBoms = true
+
+  excludes =
+      arrayOf(
+          "io.vertx:vertx-stack-depchain", // Vertx bom file
+          "com.google.guava:guava-parent", // Guava bom
+          // kotlinx dependencies are APL 2, but somehow the plugin doesn't recognize that.
+          "org.jetbrains.kotlinx:kotlinx-coroutines-core",
+          "org.jetbrains.kotlinx:kotlinx-serialization-core",
+          "org.jetbrains.kotlinx:kotlinx-serialization-json",
+      )
+
+  allowedLicensesFile = file("$rootDir/config/allowed-licenses.json")
+  filters =
+      arrayOf(
+          com.github.jk1.license.filter.LicenseBundleNormalizer(
+              "$rootDir/config/license-normalizer-bundle.json", true))
 }
 
 application { mainClass = "dev.restate.sdktesting.MainKt" }

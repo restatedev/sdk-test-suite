@@ -1,12 +1,11 @@
-/*
- * Copyright 2015-2024 the original author or authors.
- *
- * All rights reserved. This program and the accompanying materials are
- * made available under the terms of the Eclipse Public License v2.0 which
- * accompanies this distribution and is available at
- *
- * https://www.eclipse.org/legal/epl-v20.html
- */
+// Copyright (c) 2023 - Restate Software, Inc., Restate GmbH
+//
+// This file is part of the Restate SDK Test suite tool,
+// which is released under the MIT license.
+//
+// You can find a copy of the license in file LICENSE in the root
+// directory of this repository or package, or at
+// https://github.com/restatedev/sdk-test-suite/blob/main/LICENSE
 package dev.restate.sdktesting.junit
 
 import java.io.IOException
@@ -20,6 +19,11 @@ import org.junit.platform.launcher.TestExecutionListener
 import org.junit.platform.launcher.TestIdentifier
 import org.junit.platform.launcher.TestPlan
 
+/**
+ * This is based on
+ * https://github.com/junit-team/junit5/blob/af01ea8e6f52c44e458ff9b95cc6ccc7d0dc8ac6/junit-platform-console/src/main/java/org/junit/platform/console/tasks/RedirectStdoutAndStderrListener.java,
+ * license EPL 2.0
+ */
 class RedirectStdoutAndStderrListener(
     private val stdoutOutputPath: Path,
     private val stderrOutputPath: Path,
