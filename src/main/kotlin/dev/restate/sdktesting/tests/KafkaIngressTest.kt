@@ -56,7 +56,9 @@ class KafkaIngressTest {
   companion object {
     @RegisterExtension
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
-      withServiceSpec(ServiceSpec.DEFAULT)
+      withServiceSpec(
+          ServiceSpec.defaultBuilder()
+              .withServices(EventHandlerDefinitions.SERVICE_NAME, CounterDefinitions.SERVICE_NAME))
       withContainer("kafka", KafkaContainer(COUNTER_TOPIC, EVENT_HANDLER_TOPIC))
       withConfig(kafkaClusterOptions())
     }

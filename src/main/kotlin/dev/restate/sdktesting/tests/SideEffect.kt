@@ -10,6 +10,7 @@ package dev.restate.sdktesting.tests
 
 import dev.restate.sdk.client.Client
 import dev.restate.sdktesting.contracts.TestUtilsServiceClient
+import dev.restate.sdktesting.contracts.TestUtilsServiceDefinitions
 import dev.restate.sdktesting.infra.InjectClient
 import dev.restate.sdktesting.infra.RestateDeployerExtension
 import dev.restate.sdktesting.infra.ServiceSpec
@@ -27,7 +28,8 @@ class SideEffect {
   companion object {
     @RegisterExtension
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
-      withServiceSpec(ServiceSpec.DEFAULT)
+      withServiceSpec(
+          ServiceSpec.defaultBuilder().withServices(TestUtilsServiceDefinitions.SERVICE_NAME))
     }
   }
 

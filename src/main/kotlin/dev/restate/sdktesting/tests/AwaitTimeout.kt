@@ -9,7 +9,9 @@
 package dev.restate.sdktesting.tests
 
 import dev.restate.sdk.client.Client
+import dev.restate.sdktesting.contracts.AwakeableHolderDefinitions
 import dev.restate.sdktesting.contracts.TestUtilsServiceClient
+import dev.restate.sdktesting.contracts.TestUtilsServiceDefinitions
 import dev.restate.sdktesting.infra.*
 import java.time.Duration
 import kotlinx.coroutines.test.runTest
@@ -26,7 +28,11 @@ class AwaitTimeout {
   companion object {
     @RegisterExtension
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
-      withServiceSpec(ServiceSpec.DEFAULT)
+      withServiceSpec(
+          ServiceSpec.defaultBuilder()
+              .withServices(
+                  AwakeableHolderDefinitions.SERVICE_NAME,
+                  TestUtilsServiceDefinitions.SERVICE_NAME))
     }
   }
 

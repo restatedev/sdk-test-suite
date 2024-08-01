@@ -40,7 +40,12 @@ class Ingress {
   companion object {
     @RegisterExtension
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
-      withServiceSpec(ServiceSpec.DEFAULT)
+      withServiceSpec(
+          ServiceSpec.defaultBuilder()
+              .withServices(
+                  CounterDefinitions.SERVICE_NAME,
+                  ProxyDefinitions.SERVICE_NAME,
+                  TestUtilsServiceDefinitions.SERVICE_NAME))
     }
   }
 

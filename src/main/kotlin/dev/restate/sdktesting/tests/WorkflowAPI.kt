@@ -11,6 +11,7 @@ package dev.restate.sdktesting.tests
 import dev.restate.sdk.client.Client
 import dev.restate.sdk.client.SendResponse.SendStatus
 import dev.restate.sdktesting.contracts.BlockAndWaitWorkflowClient
+import dev.restate.sdktesting.contracts.BlockAndWaitWorkflowDefinitions
 import dev.restate.sdktesting.infra.*
 import java.util.*
 import kotlinx.coroutines.runBlocking
@@ -32,7 +33,8 @@ class WorkflowAPI {
   companion object {
     @RegisterExtension
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
-      withServiceSpec(ServiceSpec.DEFAULT)
+      withServiceSpec(
+          ServiceSpec.defaultBuilder().withServices(BlockAndWaitWorkflowDefinitions.SERVICE_NAME))
     }
   }
 

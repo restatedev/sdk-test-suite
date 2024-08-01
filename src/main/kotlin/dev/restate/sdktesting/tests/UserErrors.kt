@@ -10,7 +10,9 @@ package dev.restate.sdktesting.tests
 
 import dev.restate.sdk.client.Client
 import dev.restate.sdktesting.contracts.CounterClient
+import dev.restate.sdktesting.contracts.CounterDefinitions
 import dev.restate.sdktesting.contracts.FailingClient
+import dev.restate.sdktesting.contracts.FailingDefinitions
 import dev.restate.sdktesting.infra.*
 import java.util.*
 import kotlinx.coroutines.runBlocking
@@ -32,7 +34,9 @@ class UserErrors {
   companion object {
     @RegisterExtension
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
-      withServiceSpec(ServiceSpec.DEFAULT)
+      withServiceSpec(
+          ServiceSpec.defaultBuilder()
+              .withServices(FailingDefinitions.SERVICE_NAME, CounterDefinitions.SERVICE_NAME))
     }
   }
 

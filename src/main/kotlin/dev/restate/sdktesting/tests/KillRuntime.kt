@@ -10,6 +10,7 @@ package dev.restate.sdktesting.tests
 
 import dev.restate.sdk.client.Client
 import dev.restate.sdktesting.contracts.CounterClient
+import dev.restate.sdktesting.contracts.CounterDefinitions
 import dev.restate.sdktesting.infra.*
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.test.runTest
@@ -26,7 +27,7 @@ class KillRuntime {
     @JvmStatic
     @RegisterExtension
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
-      withServiceSpec(ServiceSpec.DEFAULT)
+      withServiceSpec(ServiceSpec.defaultBuilder().withServices(CounterDefinitions.SERVICE_NAME))
     }
   }
 

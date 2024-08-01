@@ -31,7 +31,9 @@ class CallOrdering {
   companion object {
     @RegisterExtension
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
-      withServiceSpec(ServiceSpec.DEFAULT)
+      withServiceSpec(
+          ServiceSpec.defaultBuilder()
+              .withServices(ProxyDefinitions.SERVICE_NAME, ListObjectDefinitions.SERVICE_NAME))
     }
 
     @JvmStatic

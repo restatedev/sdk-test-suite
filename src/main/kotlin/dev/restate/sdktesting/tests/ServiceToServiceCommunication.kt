@@ -33,7 +33,12 @@ class ServiceToServiceCommunication {
   companion object {
     @RegisterExtension
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
-      withServiceSpec(ServiceSpec.DEFAULT)
+      withServiceSpec(
+          ServiceSpec.defaultBuilder()
+              .withServices(
+                  ProxyDefinitions.SERVICE_NAME,
+                  TestUtilsServiceDefinitions.SERVICE_NAME,
+                  CounterDefinitions.SERVICE_NAME))
     }
   }
 

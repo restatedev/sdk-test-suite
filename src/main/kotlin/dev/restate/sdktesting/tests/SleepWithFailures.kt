@@ -10,6 +10,7 @@ package dev.restate.sdktesting.tests
 
 import dev.restate.sdk.client.Client
 import dev.restate.sdktesting.contracts.TestUtilsServiceClient
+import dev.restate.sdktesting.contracts.TestUtilsServiceDefinitions
 import dev.restate.sdktesting.infra.*
 import java.util.concurrent.TimeUnit
 import kotlin.random.Random
@@ -35,7 +36,8 @@ class SleepWithFailures {
   companion object {
     @RegisterExtension
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
-      withServiceSpec(ServiceSpec.DEFAULT)
+      withServiceSpec(
+          ServiceSpec.defaultBuilder().withServices(TestUtilsServiceDefinitions.SERVICE_NAME))
     }
 
     private val DEFAULT_SLEEP_DURATION = 4.seconds

@@ -35,7 +35,12 @@ class State {
   companion object {
     @RegisterExtension
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
-      withServiceSpec(ServiceSpec.DEFAULT)
+      withServiceSpec(
+          ServiceSpec.defaultBuilder()
+              .withServices(
+                  CounterDefinitions.SERVICE_NAME,
+                  ProxyDefinitions.SERVICE_NAME,
+                  MapObjectDefinitions.SERVICE_NAME))
     }
   }
 
@@ -54,7 +59,7 @@ class State {
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
-  fun proxyAdd(@InjectClient ingressClient: Client) = runTest {
+  fun proxyOneWayAdd(@InjectClient ingressClient: Client) = runTest {
     val counterId = UUID.randomUUID().toString()
     val proxyClient = ProxyClient.fromClient(ingressClient)
     val counterClient = CounterClient.fromClient(ingressClient, counterId)

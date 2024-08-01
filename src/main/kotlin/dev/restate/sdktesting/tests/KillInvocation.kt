@@ -12,9 +12,7 @@ import dev.restate.admin.api.InvocationApi
 import dev.restate.admin.client.ApiClient
 import dev.restate.admin.model.TerminationMode
 import dev.restate.sdk.client.Client
-import dev.restate.sdktesting.contracts.AwakeableHolderClient
-import dev.restate.sdktesting.contracts.KillTestRunnerClient
-import dev.restate.sdktesting.contracts.KillTestSingletonClient
+import dev.restate.sdktesting.contracts.*
 import dev.restate.sdktesting.infra.*
 import java.net.URL
 import kotlinx.coroutines.runBlocking
@@ -29,7 +27,12 @@ class KillInvocation {
   companion object {
     @RegisterExtension
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
-      withServiceSpec(ServiceSpec.DEFAULT)
+      withServiceSpec(
+          ServiceSpec.defaultBuilder()
+              .withServices(
+                  KillTestRunnerDefinitions.SERVICE_NAME,
+                  KillTestSingletonDefinitions.SERVICE_NAME,
+                  AwakeableHolderDefinitions.SERVICE_NAME))
     }
   }
 
