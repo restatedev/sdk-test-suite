@@ -9,7 +9,7 @@
 package dev.restate.sdktesting.tests
 
 import dev.restate.sdk.client.Client
-import dev.restate.sdktesting.contracts.SideEffectClient
+import dev.restate.sdktesting.contracts.TestUtilsServiceClient
 import dev.restate.sdktesting.infra.InjectClient
 import dev.restate.sdktesting.infra.RestateDeployerExtension
 import dev.restate.sdktesting.infra.ServiceSpec
@@ -35,6 +35,7 @@ class SideEffect {
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   fun sideEffectFlush(@InjectClient ingressClient: Client) = runTest {
-    assertThat(SideEffectClient.fromClient(ingressClient).invokeSideEffects()).isEqualTo(0)
+    assertThat(TestUtilsServiceClient.fromClient(ingressClient).countExecutedSideEffects(3))
+        .isEqualTo(0)
   }
 }

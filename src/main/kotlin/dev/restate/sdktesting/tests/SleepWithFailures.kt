@@ -9,7 +9,7 @@
 package dev.restate.sdktesting.tests
 
 import dev.restate.sdk.client.Client
-import dev.restate.sdktesting.contracts.CoordinatorClient
+import dev.restate.sdktesting.contracts.TestUtilsServiceClient
 import dev.restate.sdktesting.infra.*
 import java.util.concurrent.TimeUnit
 import kotlin.random.Random
@@ -49,7 +49,8 @@ class SleepWithFailures {
     val start = System.nanoTime()
     val job = coroutineScope {
       launch(Dispatchers.Default) {
-        CoordinatorClient.fromClient(ingressClient).sleep(sleepDuration.inWholeMilliseconds)
+        TestUtilsServiceClient.fromClient(ingressClient)
+            .sleepConcurrently(listOf(sleepDuration.inWholeMilliseconds))
       }
     }
     delay(

@@ -14,12 +14,14 @@ import dev.restate.sdktesting.infra.InjectClient
 import dev.restate.sdktesting.infra.RestateDeployerExtension
 import dev.restate.sdktesting.infra.ServiceSpec
 import java.util.*
+import java.util.function.Function
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
-import org.awaitility.kotlin.matches
-import org.awaitility.kotlin.untilCallTo
+import org.awaitility.kotlin.untilAsserted
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.RegisterExtension
@@ -40,39 +42,33 @@ class State {
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   fun add(@InjectClient ingressClient: Client) = runTest {
-    CounterClient.fromClient(ingressClient, "noReturnValue").add(1)
-  }
-
-  @Test
-  @Execution(ExecutionMode.CONCURRENT)
-  fun getAndSet(@InjectClient ingressClient: Client) = runTest {
-    val counterClient = CounterClient.fromClient(ingressClient, "getAndSet")
-    val res1 = counterClient.getAndAdd(1)
+    val counterClient = CounterClient.fromClient(ingressClient, "add")
+    val res1 = counterClient.add(1)
     assertThat(res1.oldValue).isEqualTo(0)
     assertThat(res1.newValue).isEqualTo(1)
 
-    val res2 = counterClient.getAndAdd(2)
+    val res2 = counterClient.add(2)
     assertThat(res2.oldValue).isEqualTo(1)
     assertThat(res2.newValue).isEqualTo(3)
   }
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
-  fun setStateViaOneWayCallFromAnotherService(@InjectClient ingressClient: Client) = runTest {
-    val counterName = "setStateViaOneWayCallFromAnotherService"
-    val proxyCounter = ProxyCounterClient.fromClient(ingressClient)
+  fun proxyAdd(@InjectClient ingressClient: Client) = runTest {
+    val counterId = UUID.randomUUID().toString()
+    val proxyClient = ProxyClient.fromClient(ingressClient)
+    val counterClient = CounterClient.fromClient(ingressClient, counterId)
 
-    proxyCounter.addInBackground(AddRequest(counterName, 1))
-    proxyCounter.addInBackground(AddRequest(counterName, 1))
-    proxyCounter.addInBackground(AddRequest(counterName, 1))
+    for (x in 0.rangeUntil(3)) {
+      proxyClient.oneWayCall(
+          ProxyRequest(
+              CounterDefinitions.SERVICE_NAME,
+              counterId,
+              "add",
+              Json.encodeToString(1).encodeToByteArray()))
+    }
 
-    await untilCallTo
-        {
-          runBlocking { CounterClient.fromClient(ingressClient, counterName).get() }
-        } matches
-        { num ->
-          num!! == 3L
-        }
+    await untilAsserted { runBlocking { assertThat(counterClient.get()).isEqualTo(3L) } }
   }
 
   @Test
@@ -89,7 +85,9 @@ class State {
     anotherMapObj.set(Entry("my-key-2", "my-value-2"))
 
     // Clear all
-    assertThat(mapObj.clearAll()).containsExactlyInAnyOrder("my-key-0", "my-key-1")
+    assertThat(mapObj.clearAll())
+        .map(Function { it.key })
+        .containsExactlyInAnyOrder("my-key-0", "my-key-1")
 
     // Check keys are not available
     assertThat(mapObj.get("my-key-0")).isEmpty()

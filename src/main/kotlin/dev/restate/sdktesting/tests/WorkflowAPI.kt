@@ -10,7 +10,7 @@ package dev.restate.sdktesting.tests
 
 import dev.restate.sdk.client.Client
 import dev.restate.sdk.client.SendResponse.SendStatus
-import dev.restate.sdktesting.contracts.WorkflowAPIBlockAndWaitClient
+import dev.restate.sdktesting.contracts.BlockAndWaitWorkflowClient
 import dev.restate.sdktesting.infra.*
 import java.util.*
 import kotlinx.coroutines.runBlocking
@@ -40,8 +40,7 @@ class WorkflowAPI {
   @DisplayName("Set and resolve durable promise leads to completion")
   @Execution(ExecutionMode.CONCURRENT)
   fun setAndResolve(@InjectClient ingressClient: Client) = runTest {
-    val client =
-        WorkflowAPIBlockAndWaitClient.fromClient(ingressClient, UUID.randomUUID().toString())
+    val client = BlockAndWaitWorkflowClient.fromClient(ingressClient, UUID.randomUUID().toString())
 
     val sendResponse = client.submit("Francesco")
     assertThat(sendResponse.status).isEqualTo(SendStatus.ACCEPTED)

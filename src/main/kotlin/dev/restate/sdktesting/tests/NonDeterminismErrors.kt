@@ -42,7 +42,7 @@ class NonDeterminismErrors {
   @ValueSource(
       strings =
           [
-              "leftSleepRightCall",
+              "eitherSleepOrCall",
               "callDifferentMethod",
               "backgroundInvokeWithDifferentTargets",
               "setDifferentKey"])

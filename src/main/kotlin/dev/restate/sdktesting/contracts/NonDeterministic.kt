@@ -13,7 +13,8 @@ import dev.restate.sdk.kotlin.ObjectContext
 
 @VirtualObject(name = "NonDeterministic")
 interface NonDeterministic {
-  @Handler suspend fun leftSleepRightCall(context: ObjectContext)
+  /** On first invocation sleeps, on second invocation calls */
+  @Handler suspend fun eitherSleepOrCall(context: ObjectContext)
 
   @Handler suspend fun callDifferentMethod(context: ObjectContext)
 

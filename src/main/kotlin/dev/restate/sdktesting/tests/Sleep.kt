@@ -9,7 +9,7 @@
 package dev.restate.sdktesting.tests
 
 import dev.restate.sdk.client.Client
-import dev.restate.sdktesting.contracts.CoordinatorClient
+import dev.restate.sdktesting.contracts.TestUtilsServiceClient
 import dev.restate.sdktesting.infra.InjectClient
 import dev.restate.sdktesting.infra.RestateDeployerExtension
 import dev.restate.sdktesting.infra.ServiceSpec
@@ -48,7 +48,8 @@ class Sleep {
     val sleepDuration = 10.milliseconds
 
     val elapsed = measureNanoTime {
-      CoordinatorClient.fromClient(ingressClient).sleep(sleepDuration.inWholeMilliseconds)
+      TestUtilsServiceClient.fromClient(ingressClient)
+          .sleepConcurrently(listOf(sleepDuration.inWholeMilliseconds))
     }
 
     Assertions.assertThat(elapsed.nanoseconds).isGreaterThanOrEqualTo(sleepDuration)
@@ -64,13 +65,13 @@ class Sleep {
         val sleepsPerInvocation = 20
         val concurrentSleepInvocations = 50
 
-        val coordinatorClient = CoordinatorClient.fromClient(ingressClient)
+        val coordinatorClient = TestUtilsServiceClient.fromClient(ingressClient)
 
         // Range is inclusive
         (1..concurrentSleepInvocations)
             .map {
               launch {
-                coordinatorClient.manyTimers(
+                coordinatorClient.sleepConcurrently(
                     (1..sleepsPerInvocation).map {
                       Random.nextLong(
                           minSleepDuration.inWholeMilliseconds..maxSleepDuration

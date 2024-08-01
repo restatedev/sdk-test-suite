@@ -13,15 +13,14 @@ import dev.restate.admin.client.ApiClient
 import dev.restate.admin.model.ModifyServiceRequest
 import dev.restate.sdk.client.Client
 import dev.restate.sdk.client.IngressException
-import dev.restate.sdktesting.contracts.AddRequest
-import dev.restate.sdktesting.contracts.CounterClient
-import dev.restate.sdktesting.contracts.CounterDefinitions
-import dev.restate.sdktesting.contracts.ProxyCounterClient
+import dev.restate.sdktesting.contracts.*
 import dev.restate.sdktesting.infra.*
 import java.net.URL
 import java.util.*
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.assertj.core.api.InstanceOfAssertFactories
@@ -64,7 +63,13 @@ class PrivateService {
         }
 
     // Send a request through the proxy client
-    ProxyCounterClient.fromClient(ingressClient).addInBackground(AddRequest(counterId, 1))
+    ProxyClient.fromClient(ingressClient)
+        .oneWayCall(
+            ProxyRequest(
+                CounterDefinitions.SERVICE_NAME,
+                counterId,
+                "add",
+                Json.encodeToString(2).encodeToByteArray()))
 
     // Make the service public again
     adminServiceClient.modifyService(

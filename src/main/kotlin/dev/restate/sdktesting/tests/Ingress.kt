@@ -22,6 +22,8 @@ import java.util.*
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
 import org.awaitility.kotlin.until
@@ -62,13 +64,13 @@ class Ingress {
     val counterClient = CounterClient.fromClient(ingressClient, counterRandomName)
 
     // First call updates the value
-    val firstResponse = counterClient.getAndAdd(2, requestOptions)
+    val firstResponse = counterClient.add(2, requestOptions)
     assertThat(firstResponse)
         .returns(0, CounterUpdateResponse::oldValue)
         .returns(2, CounterUpdateResponse::newValue)
 
     // Next call returns the same value
-    val secondResponse = counterClient.getAndAdd(2, requestOptions)
+    val secondResponse = counterClient.add(2, requestOptions)
     assertThat(secondResponse)
         .returns(0L, CounterUpdateResponse::oldValue)
         .returns(2L, CounterUpdateResponse::newValue)
@@ -78,7 +80,7 @@ class Ingress {
     await untilAsserted
         {
           runBlocking {
-            assertThat(counterClient.getAndAdd(2, requestOptions))
+            assertThat(counterClient.add(2, requestOptions))
                 .returns(2, CounterUpdateResponse::oldValue)
                 .returns(4, CounterUpdateResponse::newValue)
           }
@@ -98,17 +100,29 @@ class Ingress {
     val requestOptions = CallRequestOptions().withIdempotency(myIdempotencyId)
 
     val counterClient = CounterClient.fromClient(ingressClient, counterRandomName)
-    val proxyCounterClient = ProxyCounterClient.fromClient(ingressClient)
+    val proxyCounterClient = ProxyClient.fromClient(ingressClient)
 
     // Send request twice
-    proxyCounterClient.addInBackground(AddRequest(counterRandomName, 2), requestOptions)
-    proxyCounterClient.addInBackground(AddRequest(counterRandomName, 2), requestOptions)
+    proxyCounterClient.oneWayCall(
+        ProxyRequest(
+            CounterDefinitions.SERVICE_NAME,
+            counterRandomName,
+            "add",
+            Json.encodeToString(2).encodeToByteArray()),
+        requestOptions)
+    proxyCounterClient.oneWayCall(
+        ProxyRequest(
+            CounterDefinitions.SERVICE_NAME,
+            counterRandomName,
+            "add",
+            Json.encodeToString(2).encodeToByteArray()),
+        requestOptions)
 
     // Wait for get
     await untilAsserted { runBlocking { assertThat(counterClient.get()).isEqualTo(2) } }
 
     // Without request options this should be executed immediately and return 4
-    assertThat(counterClient.getAndAdd(2))
+    assertThat(counterClient.add(2))
         .returns(2, CounterUpdateResponse::oldValue)
         .returns(4, CounterUpdateResponse::newValue)
   }
@@ -139,7 +153,7 @@ class Ingress {
     await untilAsserted { runBlocking { assertThat(counterClient.get()).isEqualTo(2) } }
 
     // Without request options this should be executed immediately and return 4
-    assertThat(counterClient.getAndAdd(2))
+    assertThat(counterClient.add(2))
         .returns(2, CounterUpdateResponse::oldValue)
         .returns(4, CounterUpdateResponse::newValue)
   }
@@ -154,14 +168,16 @@ class Ingress {
     val response = "response"
 
     // Send request
-    val echoClient = EchoClient.fromClient(ingressClient)
+    val testUtilsClient = TestUtilsServiceClient.fromClient(ingressClient)
     val invocationId =
-        echoClient
+        testUtilsClient
             .send()
-            .blockThenEcho(awakeableKey, CallRequestOptions().withIdempotency(myIdempotencyId))
+            .holdAwakeableAndAwait(
+                awakeableKey, CallRequestOptions().withIdempotency(myIdempotencyId))
             .invocationId
     val invocationHandle =
-        ingressClient.invocationHandle(invocationId, EchoDefinitions.Serde.BLOCKTHENECHO_OUTPUT)
+        ingressClient.invocationHandle(
+            invocationId, TestUtilsServiceDefinitions.Serde.HOLDAWAKEABLEANDAWAIT_OUTPUT)
 
     // Attach to request
     val blockedFut = invocationHandle.attachAsync()
@@ -194,19 +210,20 @@ class Ingress {
     val response = "response"
 
     // Send request
-    val echoClient = EchoClient.fromClient(ingressClient)
+    val testUtilsClient = TestUtilsServiceClient.fromClient(ingressClient)
     assertThat(
-            echoClient
+            testUtilsClient
                 .send()
-                .blockThenEcho(awakeableKey, CallRequestOptions().withIdempotency(myIdempotencyId))
+                .holdAwakeableAndAwait(
+                    awakeableKey, CallRequestOptions().withIdempotency(myIdempotencyId))
                 .status)
         .isEqualTo(SendStatus.ACCEPTED)
 
     val invocationHandle =
         ingressClient.idempotentInvocationHandle(
-            Target.service(EchoDefinitions.SERVICE_NAME, "blockThenEcho"),
+            Target.service(TestUtilsServiceDefinitions.SERVICE_NAME, "holdAwakeableAndAwait"),
             myIdempotencyId,
-            EchoDefinitions.Serde.BLOCKTHENECHO_OUTPUT)
+            TestUtilsServiceDefinitions.Serde.HOLDAWAKEABLEANDAWAIT_OUTPUT)
 
     // Attach to request
     val blockedFut = invocationHandle.attachAsync()
@@ -237,7 +254,7 @@ class Ingress {
     val headerValue = "x-my-custom-value"
 
     assertThat(
-            HeadersPassThroughTestClient.fromClient(ingressClient)
+            TestUtilsServiceClient.fromClient(ingressClient)
                 .echoHeaders(CallRequestOptions().withHeader(headerName, headerValue)))
         .containsEntry(headerName, headerValue)
   }

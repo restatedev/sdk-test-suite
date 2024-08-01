@@ -9,7 +9,7 @@
 package dev.restate.sdktesting.tests
 
 import dev.restate.sdk.client.Client
-import dev.restate.sdktesting.contracts.CoordinatorClient
+import dev.restate.sdktesting.contracts.TestUtilsServiceClient
 import dev.restate.sdktesting.infra.*
 import java.time.Duration
 import kotlinx.coroutines.test.runTest
@@ -35,7 +35,9 @@ class AwaitTimeout {
   @Execution(ExecutionMode.CONCURRENT)
   fun timeout(@InjectClient ingressClient: Client) = runTest {
     val timeout = Duration.ofMillis(100L)
-
-    assertThat(CoordinatorClient.fromClient(ingressClient).timeout(timeout.toMillis())).isTrue
+    assertThat(
+            TestUtilsServiceClient.fromClient(ingressClient)
+                .awakeableWithTimeout(timeout.toMillis()))
+        .isTrue
   }
 }

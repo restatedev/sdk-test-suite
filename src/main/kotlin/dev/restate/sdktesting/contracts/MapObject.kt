@@ -16,9 +16,17 @@ import kotlinx.serialization.Serializable
 
 @VirtualObject(name = "MapObject")
 interface MapObject {
+  /**
+   * Set value in map.
+   *
+   * The individual entries should be stored as separate Restate state keys, and not in a single
+   * state key
+   */
   @Handler suspend fun set(context: ObjectContext, entry: Entry)
 
+  /** Get value from map. */
   @Handler suspend fun get(context: ObjectContext, key: String): String
 
-  @Handler suspend fun clearAll(objectContext: ObjectContext): List<String>
+  /** Clear all entries */
+  @Handler suspend fun clearAll(objectContext: ObjectContext): List<Entry>
 }

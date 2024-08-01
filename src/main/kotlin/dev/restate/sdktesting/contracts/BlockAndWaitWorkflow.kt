@@ -9,9 +9,14 @@
 package dev.restate.sdktesting.contracts
 
 import dev.restate.sdk.annotation.*
-import dev.restate.sdk.kotlin.Context
+import dev.restate.sdk.kotlin.SharedWorkflowContext
+import dev.restate.sdk.kotlin.WorkflowContext
 
-@Service(name = "RandomNumberListGenerator")
-interface RandomNumberListGenerator {
-  @Handler suspend fun generateNumbers(context: Context, itemsToGenerate: Int): List<Int>
+@Workflow
+interface BlockAndWaitWorkflow {
+  @Workflow suspend fun run(context: WorkflowContext, input: String): String
+
+  @Shared suspend fun unblock(context: SharedWorkflowContext, output: String)
+
+  @Shared suspend fun getState(context: SharedWorkflowContext): String?
 }
