@@ -14,7 +14,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class ProxyRequest(
-    val componentName: String,
+    val serviceName: String,
     val virtualObjectKey: String?, // If null, the request is to a service
     val handlerName: String,
     val message: ByteArray
@@ -23,7 +23,7 @@ data class ProxyRequest(
     if (this === other) return true
     if (other !is ProxyRequest) return false
 
-    if (componentName != other.componentName) return false
+    if (serviceName != other.serviceName) return false
     if (virtualObjectKey != other.virtualObjectKey) return false
     if (handlerName != other.handlerName) return false
     if (!message.contentEquals(other.message)) return false
@@ -32,7 +32,7 @@ data class ProxyRequest(
   }
 
   override fun hashCode(): Int {
-    var result = componentName.hashCode()
+    var result = serviceName.hashCode()
     result = 31 * result + (virtualObjectKey?.hashCode() ?: 0)
     result = 31 * result + handlerName.hashCode()
     result = 31 * result + message.contentHashCode()
