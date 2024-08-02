@@ -8,7 +8,8 @@
 // https://github.com/restatedev/sdk-test-suite/blob/main/LICENSE
 package dev.restate.sdktesting.contracts
 
-import dev.restate.sdk.annotation.*
+import dev.restate.sdk.annotation.Handler
+import dev.restate.sdk.annotation.VirtualObject
 import dev.restate.sdk.kotlin.ObjectContext
 
 @VirtualObject
@@ -17,8 +18,6 @@ interface Failing {
 
   @Handler
   suspend fun callTerminallyFailingCall(context: ObjectContext, errorMessage: String): String
-
-  @Handler suspend fun invokeExternalAndHandleFailure(context: ObjectContext): String
 
   @Handler suspend fun failingCallWithEventualSuccess(context: ObjectContext): Int
 

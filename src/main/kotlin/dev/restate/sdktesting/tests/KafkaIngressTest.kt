@@ -14,8 +14,8 @@ import dev.restate.admin.model.CreateSubscriptionRequest
 import dev.restate.sdk.client.Client
 import dev.restate.sdktesting.contracts.CounterClient
 import dev.restate.sdktesting.contracts.CounterDefinitions
-import dev.restate.sdktesting.contracts.EventHandlerDefinitions
-import dev.restate.sdktesting.contracts.TestEvent
+import dev.restate.sdktesting.contracts.ProxyDefinitions
+import dev.restate.sdktesting.contracts.ProxyRequest
 import dev.restate.sdktesting.infra.*
 import dev.restate.sdktesting.infra.runtimeconfig.IngressOptions
 import dev.restate.sdktesting.infra.runtimeconfig.KafkaClusterOptions
@@ -56,7 +56,9 @@ class KafkaIngressTest {
   companion object {
     @RegisterExtension
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
-      withServiceSpec(ServiceSpec.DEFAULT)
+      withServiceSpec(
+          ServiceSpec.defaultBuilder()
+              .withServices(ProxyDefinitions.SERVICE_NAME, CounterDefinitions.SERVICE_NAME))
       withContainer("kafka", KafkaContainer(COUNTER_TOPIC, EVENT_HANDLER_TOPIC))
       withConfig(kafkaClusterOptions())
     }
@@ -111,7 +113,7 @@ class KafkaIngressTest {
     subscriptionsClient.createSubscription(
         CreateSubscriptionRequest()
             .source("kafka://my-cluster/$EVENT_HANDLER_TOPIC")
-            .sink("service://${EventHandlerDefinitions.SERVICE_NAME}/handle")
+            .sink("service://${ProxyDefinitions.SERVICE_NAME}/oneWayCall")
             .options(mapOf("auto.offset.reset" to "earliest")))
 
     // Produce message to kafka
@@ -119,9 +121,28 @@ class KafkaIngressTest {
         "PLAINTEXT://localhost:$kafkaPort",
         EVENT_HANDLER_TOPIC,
         listOf(
-            null to Json.encodeToString(TestEvent(counter, 1)),
-            null to Json.encodeToString(TestEvent(counter, 2)),
-            null to Json.encodeToString(TestEvent(counter, 3))))
+            null to
+                Json.encodeToString(
+                    ProxyRequest(
+                        CounterDefinitions.SERVICE_NAME,
+                        counter,
+                        "add",
+                        Json.encodeToString(1).encodeToByteArray())),
+            null to
+                Json.encodeToString(
+                    ProxyRequest(
+                        CounterDefinitions.SERVICE_NAME,
+                        counter,
+                        "add",
+                        Json.encodeToString(2).encodeToByteArray())),
+            null to
+                Json.encodeToString(
+                    ProxyRequest(
+                        CounterDefinitions.SERVICE_NAME,
+                        counter,
+                        "add",
+                        Json.encodeToString(3).encodeToByteArray())),
+        ))
 
     // Now wait for the update to be visible
     await untilCallTo

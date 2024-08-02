@@ -10,6 +10,7 @@ package dev.restate.sdktesting.tests
 
 import dev.restate.sdk.client.Client
 import dev.restate.sdktesting.contracts.CounterClient
+import dev.restate.sdktesting.contracts.CounterDefinitions
 import dev.restate.sdktesting.infra.*
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.test.runTest
@@ -26,7 +27,7 @@ class StopRuntime {
     @JvmStatic
     @RegisterExtension
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
-      withServiceSpec(ServiceSpec.DEFAULT)
+      withServiceSpec(ServiceSpec.defaultBuilder().withServices(CounterDefinitions.SERVICE_NAME))
     }
   }
 
@@ -38,14 +39,14 @@ class StopRuntime {
   ) = runTest {
     val counterClient = CounterClient.fromClient(ingressClient, "my-key")
 
-    val res1 = counterClient.getAndAdd(1)
+    val res1 = counterClient.add(1)
     assertThat(res1.oldValue).isEqualTo(0)
     assertThat(res1.newValue).isEqualTo(1)
 
     // Stop and start the runtime
     runtimeHandle.terminateAndRestart()
 
-    val res2 = counterClient.getAndAdd(2)
+    val res2 = counterClient.add(2)
     assertThat(res2.oldValue).isEqualTo(1)
     assertThat(res2.newValue).isEqualTo(3)
   }

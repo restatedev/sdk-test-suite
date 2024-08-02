@@ -12,6 +12,7 @@ import dev.restate.sdk.client.Client
 import dev.restate.sdk.common.Serde
 import dev.restate.sdk.common.Target
 import dev.restate.sdktesting.contracts.CounterClient
+import dev.restate.sdktesting.contracts.CounterDefinitions
 import dev.restate.sdktesting.contracts.NonDeterministicDefinitions
 import dev.restate.sdktesting.infra.InjectClient
 import dev.restate.sdktesting.infra.RestateDeployer
@@ -34,7 +35,10 @@ class NonDeterminismErrors {
     @RegisterExtension
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
       withInvokerRetryPolicy(RestateDeployer.RetryPolicy.None)
-      withServiceSpec(ServiceSpec.DEFAULT)
+      withServiceSpec(
+          ServiceSpec.defaultBuilder()
+              .withServices(
+                  NonDeterministicDefinitions.SERVICE_NAME, CounterDefinitions.SERVICE_NAME))
     }
   }
 
@@ -42,7 +46,7 @@ class NonDeterminismErrors {
   @ValueSource(
       strings =
           [
-              "leftSleepRightCall",
+              "eitherSleepOrCall",
               "callDifferentMethod",
               "backgroundInvokeWithDifferentTargets",
               "setDifferentKey"])

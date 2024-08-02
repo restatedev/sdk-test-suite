@@ -29,7 +29,12 @@ class CancelInvocation {
   companion object {
     @RegisterExtension
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
-      withServiceSpec(ServiceSpec.DEFAULT)
+      withServiceSpec(
+          ServiceSpec.defaultBuilder()
+              .withServices(
+                  CancelTestRunnerDefinitions.SERVICE_NAME,
+                  CancelTestBlockingServiceDefinitions.SERVICE_NAME,
+                  AwakeableHolderDefinitions.SERVICE_NAME))
     }
   }
 

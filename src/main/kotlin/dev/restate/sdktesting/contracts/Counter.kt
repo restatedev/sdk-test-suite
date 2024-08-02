@@ -8,25 +8,26 @@
 // https://github.com/restatedev/sdk-test-suite/blob/main/LICENSE
 package dev.restate.sdktesting.contracts
 
-import dev.restate.sdk.annotation.*
+import dev.restate.sdk.annotation.Handler
+import dev.restate.sdk.annotation.Shared
+import dev.restate.sdk.annotation.VirtualObject
 import dev.restate.sdk.kotlin.ObjectContext
+import dev.restate.sdk.kotlin.SharedObjectContext
 import kotlinx.serialization.Serializable
-
-@Serializable data class CounterAddRequest(val oldValue: Long, val newValue: Long)
 
 @Serializable data class CounterUpdateResponse(val oldValue: Long, val newValue: Long)
 
 @VirtualObject(name = "Counter")
 interface Counter {
-  @Handler suspend fun add(context: ObjectContext, value: Long)
+  /** Add value to counter */
+  @Handler suspend fun add(context: ObjectContext, value: Long): CounterUpdateResponse
 
-  @Handler suspend fun reset(context: ObjectContext)
-
+  /** Add value to counter, then fail with a Terminal error */
   @Handler suspend fun addThenFail(context: ObjectContext, value: Long)
 
-  @Handler suspend fun get(context: ObjectContext): Long
+  /** Get count */
+  @Shared suspend fun get(context: SharedObjectContext): Long
 
-  @Handler suspend fun getAndAdd(context: ObjectContext, value: Long): CounterUpdateResponse
-
-  @Handler suspend fun infiniteIncrementLoop(context: ObjectContext)
+  /** Reset count */
+  @Handler suspend fun reset(context: ObjectContext)
 }

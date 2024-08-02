@@ -9,12 +9,18 @@
 package dev.restate.sdktesting.tests
 
 import dev.restate.sdk.client.Client
-import dev.restate.sdktesting.contracts.CoordinatorClient
+import dev.restate.sdktesting.contracts.*
 import dev.restate.sdktesting.infra.InjectClient
 import dev.restate.sdktesting.infra.RestateDeployerExtension
 import dev.restate.sdktesting.infra.ServiceSpec
+import java.util.UUID
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.assertj.core.api.Assertions.assertThat
+import org.awaitility.kotlin.await
+import org.awaitility.kotlin.untilAsserted
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.RegisterExtension
@@ -27,13 +33,45 @@ class ServiceToServiceCommunication {
   companion object {
     @RegisterExtension
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
-      withServiceSpec(ServiceSpec.DEFAULT)
+      withServiceSpec(
+          ServiceSpec.defaultBuilder()
+              .withServices(
+                  ProxyDefinitions.SERVICE_NAME,
+                  TestUtilsServiceDefinitions.SERVICE_NAME,
+                  CounterDefinitions.SERVICE_NAME))
     }
   }
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
-  fun synchronousCall(@InjectClient ingressClient: Client) = runTest {
-    assertThat(CoordinatorClient.fromClient(ingressClient).proxy()).isEqualTo("pong")
+  fun regularCall(@InjectClient ingressClient: Client) = runTest {
+    val proxyClient = ProxyClient.fromClient(ingressClient)
+
+    // Send request twice
+    assertThat(
+            proxyClient.call(
+                ProxyRequest(
+                    TestUtilsServiceDefinitions.SERVICE_NAME,
+                    null,
+                    "uppercaseEcho",
+                    Json.encodeToString("ping").encodeToByteArray())))
+        .isEqualTo(Json.encodeToString("PING").encodeToByteArray())
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  fun oneWayCall(@InjectClient ingressClient: Client) = runTest {
+    val counterId = UUID.randomUUID().toString()
+    val proxyClient = ProxyClient.fromClient(ingressClient)
+    val counterClient = CounterClient.fromClient(ingressClient, counterId)
+
+    proxyClient.oneWayCall(
+        ProxyRequest(
+            CounterDefinitions.SERVICE_NAME,
+            counterId,
+            "add",
+            Json.encodeToString(1).encodeToByteArray()))
+
+    await untilAsserted { runBlocking { assertThat(counterClient.get()).isEqualTo(1L) } }
   }
 }

@@ -9,9 +9,10 @@
 package dev.restate.sdktesting.tests
 
 import dev.restate.sdk.client.Client
-import dev.restate.sdktesting.contracts.CoordinatorClient
+import dev.restate.sdktesting.contracts.*
 import dev.restate.sdktesting.infra.*
 import java.time.Duration
+import java.util.UUID
 import kotlinx.coroutines.test.runTest
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
@@ -26,7 +27,11 @@ class AwaitTimeout {
   companion object {
     @RegisterExtension
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
-      withServiceSpec(ServiceSpec.DEFAULT)
+      withServiceSpec(
+          ServiceSpec.defaultBuilder()
+              .withServices(
+                  AwakeableHolderDefinitions.SERVICE_NAME,
+                  TestUtilsServiceDefinitions.SERVICE_NAME))
     }
   }
 
@@ -35,7 +40,11 @@ class AwaitTimeout {
   @Execution(ExecutionMode.CONCURRENT)
   fun timeout(@InjectClient ingressClient: Client) = runTest {
     val timeout = Duration.ofMillis(100L)
-
-    assertThat(CoordinatorClient.fromClient(ingressClient).timeout(timeout.toMillis())).isTrue
+    assertThat(
+            TestUtilsServiceClient.fromClient(ingressClient)
+                .createAwakeableAndAwaitIt(
+                    CreateAwakeableAndAwaitItRequest(
+                        UUID.randomUUID().toString(), timeout.toMillis())))
+        .isEqualTo(TimeoutResponse)
   }
 }

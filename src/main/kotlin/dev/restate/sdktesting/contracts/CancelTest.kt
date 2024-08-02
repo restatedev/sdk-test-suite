@@ -30,7 +30,7 @@ interface CancelTest {
 
   @VirtualObject(name = "CancelTestBlockingService")
   interface BlockingService {
-    @Exclusive suspend fun block(context: ObjectContext, operation: BlockingOperation?)
+    @Exclusive suspend fun block(context: ObjectContext, operation: BlockingOperation)
 
     @Exclusive suspend fun isUnlocked(context: ObjectContext)
   }

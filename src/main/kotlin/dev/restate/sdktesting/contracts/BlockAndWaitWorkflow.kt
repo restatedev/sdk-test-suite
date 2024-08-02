@@ -8,12 +8,13 @@
 // https://github.com/restatedev/sdk-test-suite/blob/main/LICENSE
 package dev.restate.sdktesting.contracts
 
-import dev.restate.sdk.annotation.*
+import dev.restate.sdk.annotation.Shared
+import dev.restate.sdk.annotation.Workflow
 import dev.restate.sdk.kotlin.SharedWorkflowContext
 import dev.restate.sdk.kotlin.WorkflowContext
 
 @Workflow
-interface WorkflowAPIBlockAndWait {
+interface BlockAndWaitWorkflow {
   @Workflow suspend fun run(context: WorkflowContext, input: String): String
 
   @Shared suspend fun unblock(context: SharedWorkflowContext, output: String)

@@ -9,15 +9,15 @@
 package dev.restate.sdktesting.tests
 
 import dev.restate.sdk.client.Client
-import dev.restate.sdktesting.contracts.CoordinatorClient
-import dev.restate.sdktesting.contracts.CoordinatorInvokeSequentiallyRequest
-import dev.restate.sdktesting.contracts.ListObjectClient
+import dev.restate.sdktesting.contracts.*
 import dev.restate.sdktesting.infra.InjectClient
 import dev.restate.sdktesting.infra.RestateDeployerExtension
 import dev.restate.sdktesting.infra.ServiceSpec
 import java.util.UUID
 import java.util.stream.Stream
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.extension.RegisterExtension
 import org.junit.jupiter.api.parallel.Execution
@@ -27,11 +27,13 @@ import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
 
 /** Test the ordering is respected between invoke and background invoke */
-class InvokeOrdering {
+class CallOrdering {
   companion object {
     @RegisterExtension
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
-      withServiceSpec(ServiceSpec.DEFAULT)
+      withServiceSpec(
+          ServiceSpec.defaultBuilder()
+              .withServices(ProxyDefinitions.SERVICE_NAME, ListObjectDefinitions.SERVICE_NAME))
     }
 
     @JvmStatic
@@ -56,8 +58,22 @@ class InvokeOrdering {
   ) = runTest {
     val listName = UUID.randomUUID().toString()
 
-    CoordinatorClient.fromClient(ingressClient)
-        .invokeSequentially(CoordinatorInvokeSequentiallyRequest(ordering.asList(), listName))
+    ProxyClient.fromClient(ingressClient)
+        .manyCalls(
+            ordering.mapIndexed { index, executeAsBackgroundCall ->
+              val proxyRequest =
+                  ProxyRequest(
+                      ListObjectDefinitions.SERVICE_NAME,
+                      listName,
+                      "append",
+                      Json.encodeToString(index.toString()).encodeToByteArray())
+
+              if (executeAsBackgroundCall) {
+                ManyCallRequest(proxyRequest, true, false)
+              } else {
+                ManyCallRequest(proxyRequest, false, true)
+              }
+            })
 
     assertThat(ListObjectClient.fromClient(ingressClient, listName).clear())
         .containsExactly("0", "1", "2")
