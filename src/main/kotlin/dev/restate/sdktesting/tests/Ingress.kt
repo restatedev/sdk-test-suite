@@ -43,6 +43,7 @@ class Ingress {
       withServiceSpec(
           ServiceSpec.defaultBuilder()
               .withServices(
+                  AwakeableHolderDefinitions.SERVICE_NAME,
                   CounterDefinitions.SERVICE_NAME,
                   ProxyDefinitions.SERVICE_NAME,
                   TestUtilsServiceDefinitions.SERVICE_NAME))
@@ -177,12 +178,13 @@ class Ingress {
     val invocationId =
         testUtilsClient
             .send()
-            .holdAwakeableAndAwait(
-                awakeableKey, CallRequestOptions().withIdempotency(myIdempotencyId))
+            .createAwakeableAndAwaitIt(
+                CreateAwakeableAndAwaitItRequest(awakeableKey),
+                CallRequestOptions().withIdempotency(myIdempotencyId))
             .invocationId
     val invocationHandle =
         ingressClient.invocationHandle(
-            invocationId, TestUtilsServiceDefinitions.Serde.HOLDAWAKEABLEANDAWAIT_OUTPUT)
+            invocationId, TestUtilsServiceDefinitions.Serde.CREATEAWAKEABLEANDAWAITIT_OUTPUT)
 
     // Attach to request
     val blockedFut = invocationHandle.attachAsync()
@@ -199,10 +201,10 @@ class Ingress {
     awakeableHolderClient.unlock(response)
 
     // Attach should be completed
-    assertThat(blockedFut.get()).isEqualTo(response)
+    assertThat(blockedFut.get()).isEqualTo(AwakeableResultResponse(response))
 
     // Invoke get output
-    assertThat(invocationHandle.output.value).isEqualTo(response)
+    assertThat(invocationHandle.output.value).isEqualTo(AwakeableResultResponse(response))
   }
 
   @Test
@@ -219,16 +221,17 @@ class Ingress {
     assertThat(
             testUtilsClient
                 .send()
-                .holdAwakeableAndAwait(
-                    awakeableKey, CallRequestOptions().withIdempotency(myIdempotencyId))
+                .createAwakeableAndAwaitIt(
+                    CreateAwakeableAndAwaitItRequest(awakeableKey),
+                    CallRequestOptions().withIdempotency(myIdempotencyId))
                 .status)
         .isEqualTo(SendStatus.ACCEPTED)
 
     val invocationHandle =
         ingressClient.idempotentInvocationHandle(
-            Target.service(TestUtilsServiceDefinitions.SERVICE_NAME, "holdAwakeableAndAwait"),
+            Target.service(TestUtilsServiceDefinitions.SERVICE_NAME, "createAwakeableAndAwaitIt"),
             myIdempotencyId,
-            TestUtilsServiceDefinitions.Serde.HOLDAWAKEABLEANDAWAIT_OUTPUT)
+            TestUtilsServiceDefinitions.Serde.CREATEAWAKEABLEANDAWAITIT_OUTPUT)
 
     // Attach to request
     val blockedFut = invocationHandle.attachAsync()
@@ -245,10 +248,10 @@ class Ingress {
     awakeableHolderClient.unlock(response)
 
     // Attach should be completed
-    assertThat(blockedFut.get()).isEqualTo(response)
+    assertThat(blockedFut.get()).isEqualTo(AwakeableResultResponse(response))
 
     // Invoke get output
-    assertThat(invocationHandle.output.value).isEqualTo(response)
+    assertThat(invocationHandle.output.value).isEqualTo(AwakeableResultResponse(response))
   }
 
   @Test

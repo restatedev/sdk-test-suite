@@ -145,15 +145,15 @@ class UserErrors {
   @DisplayName("Test terminal error of side effects is propagated")
   @Test
   @Execution(ExecutionMode.CONCURRENT)
-  fun sideEffectWithTerminalError(@InjectClient ingressClient: Client) {
+  fun sideEffectWithTerminalError(@InjectClient ingressClient: Client) = runTest {
     val errorMessage = "failed side effect"
 
-    assertThatThrownBy {
-          runBlocking {
-            FailingClient.fromClient(ingressClient, UUID.randomUUID().toString())
-                .terminallyFailingSideEffect(errorMessage)
-          }
-        }
+    assertThat(
+            runCatching {
+                  FailingClient.fromClient(ingressClient, UUID.randomUUID().toString())
+                      .terminallyFailingSideEffect(errorMessage)
+                }
+                .exceptionOrNull())
         .hasMessageContaining(errorMessage)
   }
 }

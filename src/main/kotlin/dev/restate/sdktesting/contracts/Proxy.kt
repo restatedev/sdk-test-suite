@@ -8,7 +8,8 @@
 // https://github.com/restatedev/sdk-test-suite/blob/main/LICENSE
 package dev.restate.sdktesting.contracts
 
-import dev.restate.sdk.annotation.*
+import dev.restate.sdk.annotation.Handler
+import dev.restate.sdk.annotation.Service
 import dev.restate.sdk.kotlin.Context
 import kotlinx.serialization.Serializable
 
@@ -54,9 +55,9 @@ data class ManyCallRequest(
 
 @Service
 interface Proxy {
-  @Handler suspend fun call(context: Context, proxyRequest: ProxyRequest): ByteArray
+  @Handler suspend fun call(context: Context, request: ProxyRequest): ByteArray
 
-  @Handler suspend fun oneWayCall(context: Context, proxyRequest: ProxyRequest)
+  @Handler suspend fun oneWayCall(context: Context, request: ProxyRequest)
 
-  @Handler suspend fun manyCalls(context: Context, request: List<ManyCallRequest>)
+  @Handler suspend fun manyCalls(context: Context, requests: List<ManyCallRequest>)
 }

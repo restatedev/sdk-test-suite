@@ -9,11 +9,10 @@
 package dev.restate.sdktesting.tests
 
 import dev.restate.sdk.client.Client
-import dev.restate.sdktesting.contracts.AwakeableHolderDefinitions
-import dev.restate.sdktesting.contracts.TestUtilsServiceClient
-import dev.restate.sdktesting.contracts.TestUtilsServiceDefinitions
+import dev.restate.sdktesting.contracts.*
 import dev.restate.sdktesting.infra.*
 import java.time.Duration
+import java.util.UUID
 import kotlinx.coroutines.test.runTest
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
@@ -43,7 +42,9 @@ class AwaitTimeout {
     val timeout = Duration.ofMillis(100L)
     assertThat(
             TestUtilsServiceClient.fromClient(ingressClient)
-                .awakeableWithTimeout(timeout.toMillis()))
-        .isTrue
+                .createAwakeableAndAwaitIt(
+                    CreateAwakeableAndAwaitItRequest(
+                        UUID.randomUUID().toString(), timeout.toMillis())))
+        .isEqualTo(TimeoutResponse)
   }
 }

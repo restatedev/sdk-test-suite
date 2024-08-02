@@ -55,7 +55,7 @@ class ServiceToServiceCommunication {
                     null,
                     "uppercaseEcho",
                     Json.encodeToString("ping").encodeToByteArray())))
-        .isEqualTo("PING")
+        .isEqualTo(Json.encodeToString("PING").encodeToByteArray())
   }
 
   @Test

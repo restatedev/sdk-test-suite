@@ -8,7 +8,8 @@
 // https://github.com/restatedev/sdk-test-suite/blob/main/LICENSE
 package dev.restate.sdktesting.contracts
 
-import dev.restate.sdk.annotation.*
+import dev.restate.sdk.annotation.Handler
+import dev.restate.sdk.annotation.VirtualObject
 import dev.restate.sdk.kotlin.ObjectContext
 import kotlinx.serialization.Serializable
 
@@ -28,5 +29,5 @@ interface MapObject {
   @Handler suspend fun get(context: ObjectContext, key: String): String
 
   /** Clear all entries */
-  @Handler suspend fun clearAll(objectContext: ObjectContext): List<Entry>
+  @Handler suspend fun clearAll(context: ObjectContext): List<Entry>
 }

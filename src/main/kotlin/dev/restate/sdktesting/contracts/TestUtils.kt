@@ -10,6 +10,25 @@ package dev.restate.sdktesting.contracts
 
 import dev.restate.sdk.annotation.*
 import dev.restate.sdk.kotlin.Context
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+
+@Serializable
+data class CreateAwakeableAndAwaitItRequest(
+    val awakeableKey: String,
+    // If not null, then await it with orTimeout()
+    val awaitTimeout: Long? = null
+)
+
+@Serializable sealed interface CreateAwakeableAndAwaitItResponse
+// This is serialized as `{"type": "timeout"}`
+@Serializable
+@SerialName("timeout")
+data object TimeoutResponse : CreateAwakeableAndAwaitItResponse
+// This is serialized as `{"type": "result", "value": <VALUE>}`
+@Serializable
+@SerialName("result")
+data class AwakeableResultResponse(val value: String) : CreateAwakeableAndAwaitItResponse
 
 /** Collection of various utilities/corner cases scenarios used by tests */
 @Service(name = "TestUtilsService")
@@ -24,17 +43,14 @@ interface TestUtilsService {
   @Handler suspend fun echoHeaders(context: Context): Map<String, String>
 
   /** Create an awakeable, register it to AwakeableHolder#hold, then await it. */
-  @Handler suspend fun holdAwakeableAndAwait(ctx: Context, awakeableKey: String): String
+  @Handler
+  suspend fun createAwakeableAndAwaitIt(
+      ctx: Context,
+      req: CreateAwakeableAndAwaitItRequest
+  ): CreateAwakeableAndAwaitItResponse
 
   /** Create timers and await them all. Durations in milliseconds */
   @Handler suspend fun sleepConcurrently(context: Context, millisDuration: List<Long>)
-
-  /**
-   * Create an awakeable that is never resolved, and await it with Awaitable#orTimeout().
-   *
-   * @return true if the timeout was fired
-   */
-  @Handler suspend fun awakeableWithTimeout(context: Context, millisDuration: Long): Boolean
 
   /**
    * Invoke `ctx.run` incrementing a local variable counter (not a restate state key!).

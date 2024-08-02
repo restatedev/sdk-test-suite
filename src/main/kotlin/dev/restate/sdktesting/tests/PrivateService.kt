@@ -71,7 +71,7 @@ class PrivateService {
                 CounterDefinitions.SERVICE_NAME,
                 counterId,
                 "add",
-                Json.encodeToString(2).encodeToByteArray()))
+                Json.encodeToString(1).encodeToByteArray()))
 
     // Make the service public again
     adminServiceClient.modifyService(
