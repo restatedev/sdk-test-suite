@@ -13,3 +13,12 @@ TODO, more coming soon
 
 * Run the service with your IDE and the debugger
 * Run `java -jar restate-sdk-test-suite.jar debug --test-suite=<TEST_SUITE> --test-name=<TEST_NAME> default-service=9080`
+
+## Releasing
+
+Just push a new git tag:
+
+```shell
+git tag v1.1 
+git push --tags
+```

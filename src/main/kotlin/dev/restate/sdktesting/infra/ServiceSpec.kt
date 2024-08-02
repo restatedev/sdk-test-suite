@@ -69,7 +69,7 @@ data class ServiceSpec(
       }
       is LocalForwardServiceDeploymentConfig -> {
         Testcontainers.exposeHostPorts(serviceConfig.port)
-        println(
+        LOG.warn(
             """
               Service spec '$name' won't deploy a container, but will use locally running service deployment:
               * Should be available at 'localhost:${serviceConfig.port}'

@@ -10,12 +10,12 @@ package dev.restate.sdktesting.junit
 
 object TestSuites {
   val DEFAULT_SUITE = TestSuite("default", emptyMap(), "none() | always-suspending")
-  val ALWAYS_SUSPENDING_SUITE =
+  private val ALWAYS_SUSPENDING_SUITE =
       TestSuite(
           "alwaysSuspending",
           mapOf("RESTATE_WORKER__INVOKER__INACTIVITY_TIMEOUT" to "0s"),
           "always-suspending | only-always-suspending")
-  val SINGLE_THREAD_SINGLE_PARTITION_SUITE =
+  private val SINGLE_THREAD_SINGLE_PARTITION_SUITE =
       TestSuite(
           "singleThreadSinglePartition",
           mapOf(
@@ -23,14 +23,14 @@ object TestSuites {
               "RESTATE_DEFAULT_THREAD_POOL_SIZE" to "1",
           ),
           "none() | always-suspending")
-  val LAZY_STATE_SUITE =
+  private val LAZY_STATE_SUITE =
       TestSuite(
           "lazyState",
           mapOf(
               "RESTATE_WORKER__INVOKER__DISABLE_EAGER_STATE" to "true",
           ),
           "lazy-state")
-  val PERSISTED_TIMERS_SUITE =
+  private val PERSISTED_TIMERS_SUITE =
       TestSuite(
           "persistedTimers", mapOf("RESTATE_WORKER__NUM_TIMERS_IN_MEMORY_LIMIT" to "1"), "timers")
 

@@ -19,8 +19,7 @@ import dev.restate.sdktesting.infra.RestateDeployer
 import dev.restate.sdktesting.infra.RestateDeployerExtension
 import dev.restate.sdktesting.infra.ServiceSpec
 import kotlinx.coroutines.test.runTest
-import org.assertj.core.api.Assertions
-import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.*
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.extension.RegisterExtension
 import org.junit.jupiter.api.parallel.Execution
@@ -52,7 +51,7 @@ class NonDeterminismErrors {
               "setDifferentKey"])
   @Execution(ExecutionMode.CONCURRENT)
   fun method(handlerName: String, @InjectClient ingressClient: Client) = runTest {
-    Assertions.assertThatThrownBy {
+    assertThatThrownBy {
           ingressClient.call(
               Target.virtualObject(
                   NonDeterministicDefinitions.SERVICE_NAME, handlerName, handlerName),

@@ -22,7 +22,12 @@ import com.github.ajalt.clikt.parameters.groups.provideDelegate
 import com.github.ajalt.clikt.parameters.options.*
 import com.github.ajalt.clikt.parameters.types.enum
 import com.github.ajalt.clikt.parameters.types.path
+import com.github.ajalt.mordant.rendering.TextColors.green
+import com.github.ajalt.mordant.rendering.TextColors.red
+import com.github.ajalt.mordant.rendering.TextStyles.bold
+import com.github.ajalt.mordant.terminal.Terminal
 import dev.restate.sdktesting.infra.*
+import dev.restate.sdktesting.junit.ExecutionResult
 import dev.restate.sdktesting.junit.TestSuites
 import java.io.File
 import java.io.FileInputStream
@@ -33,7 +38,6 @@ import java.time.format.DateTimeFormatter
 import kotlin.jvm.optionals.getOrNull
 import kotlin.system.exitProcess
 import kotlin.time.Duration
-import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.serialization.Serializable
 import org.junit.platform.engine.Filter
 import org.junit.platform.engine.discovery.ClassNameFilter
@@ -109,6 +113,8 @@ Run test suite, executing the service as container.
   val imageName by argument()
 
   override fun run() {
+    val terminal = Terminal()
+
     val restateDeployerConfig =
         RestateDeployerConfig(
             mapOf(ServiceSpec.DEFAULT_SERVICE_NAME to ContainerServiceDeploymentConfig(imageName)))
@@ -127,16 +133,8 @@ Run test suite, executing the service as container.
           ExclusionsFile()
         }
 
-    data class AggregateResults(
-        var succededTests: Long = 0,
-        var startedTests: Long = 0,
-        var succeededClasses: Long = 0,
-        var startedClasses: Long = 0,
-        var totalDuration: Duration = Duration.ZERO
-    )
-
-    val aggregateResults = AggregateResults()
-    val failedTests = mutableMapOf<String, List<String>>()
+    val reports = mutableListOf<ExecutionResult>()
+    val newExclusions = mutableMapOf<String, List<String>>()
     var newFailures = false
     for (testSuite in testSuites) {
       val exclusions = loadedExclusions.exclusions[testSuite.name] ?: emptyList()
@@ -147,21 +145,14 @@ Run test suite, executing the service as container.
 
       val report =
           testSuite.runTests(
-              testRunnerOptions.reportDir, exclusionsFilters + cliOptionFilter, false)
+              terminal, testRunnerOptions.reportDir, exclusionsFilters + cliOptionFilter, false)
 
-      aggregateResults.succededTests += report.testsSucceededCount
-      aggregateResults.startedTests += report.testsStartedCount
-      aggregateResults.succeededClasses +=
-          report.containersSucceededCount - 1 // Package is a test container
-      aggregateResults.startedClasses +=
-          report.containersStartedCount - 1 // Package is a test container
-      aggregateResults.totalDuration +=
-          report.timeFinished.milliseconds - report.timeStarted.milliseconds
-
-      if (report.failures.isNotEmpty() || exclusions.isNotEmpty()) {
-        failedTests[testSuite.name] =
-            report.failures
-                .mapNotNull { it.testIdentifier.source.getOrNull() }
+      reports.add(report)
+      val failures = report.failedTests
+      if (failures.isNotEmpty() || exclusions.isNotEmpty()) {
+        newExclusions[testSuite.name] =
+            failures
+                .mapNotNull { it.source.getOrNull() }
                 .mapNotNull {
                   when (it) {
                     is ClassSource -> it.className!!
@@ -171,25 +162,42 @@ Run test suite, executing the service as container.
                 }
                 .distinct() + exclusions
       }
-      if (report.failures.isNotEmpty()) {
+      if (failures.isNotEmpty()) {
         newFailures = true
       }
     }
 
+    // Write out the exclusions file
     FileOutputStream(testRunnerOptions.reportDir.resolve("exclusions.new.yaml").toFile()).use {
-      Yaml.default.encodeToStream(ExclusionsFile(failedTests), it)
+      Yaml.default.encodeToStream(ExclusionsFile(newExclusions), it)
     }
+
+    // Print final report
+    val succeededTests = reports.sumOf { it.succeededTests }
+    val executedTests = reports.sumOf { it.executedTests }
+    val testsStyle = if (succeededTests == executedTests) green else red
+    val testsInfoLine = testsStyle("""* Succeeded tests: $succeededTests / ${executedTests}""")
+
+    val failedClasses = reports.sumOf { it.executedClasses - it.succeededClasses }
+    val classesStyle = if (failedClasses != 0) red else green
+    val classesInfoLine = classesStyle("""* Failed classes initialization: $failedClasses""")
+
+    val totalDuration = reports.fold(Duration.ZERO) { d, res -> d + res.executionDuration }
 
     println(
         """
-            ========================= Final results =========================
-            All reports are available under: ${testRunnerOptions.reportDir}
-            
-            * Succeeded tests: ${aggregateResults.succededTests} / ${aggregateResults.startedTests}
-            * Succeeded test classes: ${aggregateResults.succeededClasses} / ${aggregateResults.startedClasses}
-            * Execution time: ${aggregateResults.totalDuration}
+            ${bold("========================= Final results =========================")}
+            🗈 Report directory: ${testRunnerOptions.reportDir}
+            * Run test suites: ${reports.map { it.testSuite }}
+            $testsInfoLine
+            $classesInfoLine
+            * Execution time: $totalDuration
         """
             .trimIndent())
+
+    for (report in reports) {
+      report.printFailuresTo(terminal)
+    }
 
     if (newFailures) {
       // Exit
@@ -223,6 +231,8 @@ Run test suite, without executing the service inside a container.
               "Local containers name=ports. Example: '9080' (for default-service container), 'otherContainer=9081'")
 
   override fun run() {
+    val terminal = Terminal()
+
     // Register global config of the deployer
     val restateDeployerConfig =
         RestateDeployerConfig(
@@ -235,8 +245,11 @@ Run test suite, without executing the service inside a container.
     val testSuite = TestSuites.resolveSuites(testSuite)[0]
     val testFilters = listOf(ClassNameFilter.includeClassNamePatterns(testName))
 
-    val report = testSuite.runTests(testRunnerOptions.reportDir, testFilters, true)
-    if (report.testsFailedCount != 0L) {
+    val report = testSuite.runTests(terminal, testRunnerOptions.reportDir, testFilters, true)
+
+    report.printFailuresTo(terminal)
+
+    if (report.failedTests.isNotEmpty()) {
       // Exit
       exitProcess(1)
     }

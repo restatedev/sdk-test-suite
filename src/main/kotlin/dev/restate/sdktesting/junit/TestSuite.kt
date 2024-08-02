@@ -8,13 +8,14 @@
 // https://github.com/restatedev/sdk-test-suite/blob/main/LICENSE
 package dev.restate.sdktesting.junit
 
+import com.github.ajalt.mordant.rendering.TextStyles.bold
+import com.github.ajalt.mordant.terminal.Terminal
 import dev.restate.sdktesting.infra.BaseRestateDeployerExtension
 import dev.restate.sdktesting.infra.getGlobalConfig
 import dev.restate.sdktesting.infra.registerGlobalConfig
 import java.io.PrintWriter
 import java.nio.file.Path
 import kotlin.jvm.optionals.getOrNull
-import kotlin.time.Duration.Companion.milliseconds
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.ThreadContext
 import org.apache.logging.log4j.core.config.Configurator
@@ -25,14 +26,9 @@ import org.junit.platform.engine.TestExecutionResult
 import org.junit.platform.engine.discovery.DiscoverySelectors
 import org.junit.platform.engine.support.descriptor.ClassSource
 import org.junit.platform.engine.support.descriptor.MethodSource
-import org.junit.platform.launcher.LauncherConstants
-import org.junit.platform.launcher.TagFilter
-import org.junit.platform.launcher.TestExecutionListener
-import org.junit.platform.launcher.TestIdentifier
+import org.junit.platform.launcher.*
 import org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder
 import org.junit.platform.launcher.core.LauncherFactory
-import org.junit.platform.launcher.listeners.SummaryGeneratingListener
-import org.junit.platform.launcher.listeners.TestExecutionSummary
 import org.junit.platform.reporting.legacy.xml.LegacyXmlReportGeneratingListener
 
 class TestSuite(
@@ -41,18 +37,18 @@ class TestSuite(
     val junitIncludeTags: String
 ) {
   fun runTests(
+      terminal: Terminal,
       baseReportDir: Path,
       filters: List<Filter<*>>,
       printToStdout: Boolean
-  ): TestExecutionSummary {
+  ): ExecutionResult {
     val reportDir = baseReportDir.resolve(name)
-
-    println(
+    terminal.println(
         """
-            ========================= $name =========================
-            Report directory: $reportDir
-        """
-            .trimIndent())
+              |==== ${bold(name)}
+              |🗈 Report directory: $reportDir
+          """
+            .trimMargin())
 
     // Apply additional runtime envs
     registerGlobalConfig(getGlobalConfig().copy(additionalRuntimeEnvs = additionalEnvs))
@@ -76,8 +72,7 @@ class TestSuite(
 
     // Configure listeners
     val errWriter = PrintWriter(System.err)
-    // TODO replace this with our own listener
-    val summaryListener = SummaryGeneratingListener()
+    val executionResultCollector = ExecutionResultCollector(name)
     // TODO replace this with our own xml writer
     val xmlReportListener = LegacyXmlReportGeneratingListener(reportDir, errWriter)
     val redirectStdoutAndStderrListener =
@@ -85,6 +80,30 @@ class TestSuite(
             reportDir.resolve("testrunner.stdout"),
             reportDir.resolve("testrunner.stderr"),
             errWriter)
+    val logTestEventsListener =
+        object : TestExecutionListener {
+          @Volatile var testPlan: TestPlan? = null
+
+          override fun testPlanExecutionStarted(testPlan: TestPlan) {
+            this.testPlan = testPlan
+          }
+
+          override fun executionFinished(
+              testIdentifier: TestIdentifier,
+              testExecutionResult: TestExecutionResult
+          ) {
+            if (testIdentifier.isTest) {
+              val name = describeTestIdentifier(name, testPlan!!, testIdentifier)
+              when (testExecutionResult.status!!) {
+                TestExecutionResult.Status.SUCCESSFUL -> terminal.println("✅ $name")
+                TestExecutionResult.Status.ABORTED -> terminal.println("❌ $name")
+                TestExecutionResult.Status.FAILED -> {
+                  terminal.println("❌ $name")
+                }
+              }
+            }
+          }
+        }
     val injectLoggingContextListener =
         object : TestExecutionListener {
           val TEST_NAME = "test"
@@ -113,24 +132,17 @@ class TestSuite(
     LauncherFactory.openSession().use { session ->
       val launcher = session.launcher
       launcher.registerTestExecutionListeners(
-          summaryListener,
+          executionResultCollector,
+          logTestEventsListener,
           xmlReportListener,
           redirectStdoutAndStderrListener,
           injectLoggingContextListener)
       launcher.execute(request)
     }
 
-    val report = summaryListener.summary!!
+    val report = executionResultCollector.results
 
-    println(
-        """
-            * Succeeded tests: ${report.testsSucceededCount} / ${report.testsStartedCount}
-            * Succeeded test classes: ${report.containersSucceededCount - 1} / ${report.containersStartedCount - 1}
-            * Execution time: ${report.timeFinished.milliseconds - report.timeStarted.milliseconds}
-        """
-            .trimIndent())
-    val printWriter = PrintWriter(System.out)
-    report.printFailuresTo(printWriter)
+    report.printShortSummary(terminal)
 
     return report
   }
@@ -139,7 +151,7 @@ class TestSuite(
     val builder = ConfigurationBuilderFactory.newConfigurationBuilder()
 
     val layout = builder.newLayout("PatternLayout")
-    layout.addAttribute("pattern", "%-4r [%t]%X %-5p %c - %m%n")
+    layout.addAttribute("pattern", "%-4r %-5p [%t]%notEmpty{[%X{test}]} %c{1.2.*} - %m%n")
 
     val fileAppender = builder.newAppender("log", "File")
     fileAppender.addAttribute("fileName", reportDir.resolve("testrunner.log").toString())

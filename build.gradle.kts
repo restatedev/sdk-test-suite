@@ -22,7 +22,8 @@ repositories {
 }
 
 dependencies {
-  implementation("com.github.ajalt.clikt:clikt:4.2.2")
+  implementation(libs.clikt)
+  implementation(libs.mordant)
 
   implementation(libs.restate.admin)
   implementation(libs.restate.sdk.common)
