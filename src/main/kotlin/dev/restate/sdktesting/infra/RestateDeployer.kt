@@ -428,7 +428,7 @@ private constructor(
 
   private fun imagePullPolicy(): ImagePullPolicy {
     return when (config.imagePullPolicy) {
-      dev.restate.sdktesting.infra.PullPolicy.ALWAYS -> PullPolicy.alwaysPull()
+      dev.restate.sdktesting.infra.PullPolicy.ALWAYS -> LocalAlwaysPullPolicy
       dev.restate.sdktesting.infra.PullPolicy.CACHED -> PullPolicy.defaultPolicy()
     }
   }

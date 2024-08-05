@@ -70,7 +70,8 @@ class TestRunnerOptions : OptionGroup() {
   val imagePullPolicy by
       option()
           .enum<PullPolicy>()
-          .help("Pull policy used to pull containers required for testing")
+          .help(
+              "Pull policy used to pull containers required for testing. In case of ALWAYS, docker won't pull images with repository prefix restate.local or localhost")
           .default(PullPolicy.ALWAYS)
 
   fun applyToDeployerConfig(deployerConfig: RestateDeployerConfig): RestateDeployerConfig {
