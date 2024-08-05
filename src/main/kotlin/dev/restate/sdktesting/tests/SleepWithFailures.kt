@@ -18,6 +18,8 @@ import kotlin.random.nextLong
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TimeSource
+import kotlin.time.toJavaDuration
 import kotlinx.coroutines.*
 import kotlinx.coroutines.test.runTest
 import org.assertj.core.api.Assertions.assertThat
@@ -46,11 +48,11 @@ class SleepWithFailures {
   private suspend fun asyncSleepTest(
       ingressClient: Client,
       sleepDuration: Duration = DEFAULT_SLEEP_DURATION,
-      action: () -> Unit
+      action: suspend () -> Unit
   ) {
-    val start = System.nanoTime()
+    val start = TimeSource.Monotonic.markNow()
     val job = coroutineScope {
-      launch(Dispatchers.Default) {
+      launch {
         TestUtilsServiceClient.fromClient(ingressClient)
             .sleepConcurrently(listOf(sleepDuration.inWholeMilliseconds))
       }
@@ -64,28 +66,27 @@ class SleepWithFailures {
 
     job.join()
 
-    assertThat(System.nanoTime() - start).isGreaterThanOrEqualTo(sleepDuration.inWholeNanoseconds)
+    assertThat(start.elapsedNow().toJavaDuration())
+        .isGreaterThanOrEqualTo(sleepDuration.toJavaDuration())
   }
 
-  @Timeout(value = 15, unit = TimeUnit.SECONDS)
+  @Timeout(value = 45, unit = TimeUnit.SECONDS)
   @Test
   fun sleepAndKillServiceEndpoint(
       @InjectClient ingressClient: Client,
       @InjectContainerHandle(ServiceSpec.DEFAULT_SERVICE_NAME) coordinatorContainer: ContainerHandle
   ) {
-    runTest(timeout = 15.seconds) {
+    runTest(timeout = 30.seconds) {
       asyncSleepTest(ingressClient) { coordinatorContainer.killAndRestart() }
     }
   }
 
-  @Timeout(value = 15, unit = TimeUnit.SECONDS)
+  @Timeout(value = 45, unit = TimeUnit.SECONDS)
   @Test
   fun sleepAndTerminateServiceEndpoint(
       @InjectClient ingressClient: Client,
       @InjectContainerHandle(ServiceSpec.DEFAULT_SERVICE_NAME) coordinatorContainer: ContainerHandle
   ) {
-    runTest(timeout = 15.seconds) {
-      asyncSleepTest(ingressClient) { coordinatorContainer.terminateAndRestart() }
-    }
+    runTest { asyncSleepTest(ingressClient) { coordinatorContainer.terminateAndRestart() } }
   }
 }

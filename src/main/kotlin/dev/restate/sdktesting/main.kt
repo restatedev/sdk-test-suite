@@ -111,6 +111,11 @@ Run test suite, executing the service as container.
             .trimIndent()) {
   val filter by FilterOptions().cooccurring()
   val exclusionsFile by option().help("File containing the excluded tests")
+  val parallel by
+      option(help = "Enable parallel testing")
+          .help(
+              "If set, runs tests in parallel. We suggest running tests sequentially when using podman")
+          .flag("--sequential", default = true)
   val imageName by argument()
 
   override fun run() {
@@ -146,7 +151,11 @@ Run test suite, executing the service as container.
 
       val report =
           testSuite.runTests(
-              terminal, testRunnerOptions.reportDir, exclusionsFilters + cliOptionFilter, false)
+              terminal,
+              testRunnerOptions.reportDir,
+              exclusionsFilters + cliOptionFilter,
+              false,
+              parallel)
 
       reports.add(report)
       val failures = report.failedTests
@@ -247,7 +256,7 @@ Run test suite, without executing the service inside a container.
     val testSuite = TestSuites.resolveSuites(testSuite)[0]
     val testFilters = listOf(ClassNameFilter.includeClassNamePatterns(testName))
 
-    val report = testSuite.runTests(terminal, testRunnerOptions.reportDir, testFilters, true)
+    val report = testSuite.runTests(terminal, testRunnerOptions.reportDir, testFilters, true, false)
 
     report.printFailuresTo(terminal)
 

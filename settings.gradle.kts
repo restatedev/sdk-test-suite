@@ -51,7 +51,7 @@ dependencyResolutionManagement {
       version("assertj", "3.24.2")
       library("assertj", "org.assertj", "assertj-core").versionRef("assertj")
 
-      version("testcontainers", "1.19.7")
+      version("testcontainers", "1.20.1")
       library("testcontainers-core", "org.testcontainers", "testcontainers")
           .versionRef("testcontainers")
       library("testcontainers-kafka", "org.testcontainers", "kafka").versionRef("testcontainers")

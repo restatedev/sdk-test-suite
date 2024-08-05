@@ -20,8 +20,8 @@ import dev.restate.sdktesting.infra.runtimeconfig.RestateConfigSchema
 import java.io.File
 import java.lang.reflect.Method
 import java.net.URI
+import java.net.http.HttpClient
 import java.nio.file.Path
-import kotlin.time.Duration.Companion.seconds
 import org.apache.logging.log4j.LogManager
 import org.junit.jupiter.api.extension.ExtensionContext
 import org.junit.jupiter.api.fail
@@ -70,6 +70,8 @@ private constructor(
     private const val RESTATE_URI_ENV = "RESTATE_URI"
 
     private val LOG = LogManager.getLogger(RestateDeployer::class.java)
+
+    private val apiClient = ApiClient()
 
     fun builder(): Builder {
       return Builder()
@@ -219,18 +221,20 @@ private constructor(
     deployRuntime(testReportDir)
     deployProxy(testReportDir)
 
-    waitRuntimeHealthy()
-
     // Let's execute service discovery to register the services
+    waitRuntimeAdminHealthy()
     val client =
         DeploymentApi(
-            ApiClient()
+            ApiClient(HttpClient.newBuilder(), apiClient.objectMapper, null)
                 .setHost("localhost")
                 .setPort(getContainerPort(RESTATE_RUNTIME, RUNTIME_META_ENDPOINT_PORT)))
     serviceSpecs.forEach { spec -> discoverDeployment(client, spec) }
 
     // Log environment
     writeEnvironmentReport(testReportDir)
+
+    // Wait runtime ingress healthy
+    waitRuntimeIngressHealthy()
   }
 
   private fun deployServices(testReportDir: String, restateURI: String) {
@@ -273,8 +277,6 @@ private constructor(
 
     // Configure runtime container
     runtimeContainer
-        // We expose these ports only to enable port checks
-        .withExposedPorts(RUNTIME_INGRESS_ENDPOINT_PORT, RUNTIME_META_ENDPOINT_PORT)
         .dependsOn(serviceContainers.values.map { it.second })
         .dependsOn(additionalContainers.values)
         .withEnv(runtimeContainerEnvs)
@@ -325,18 +327,27 @@ private constructor(
     LOG.debug("Toxiproxy started. Ingress port: {}. Admin API port: {}", ingressPort, adminPort)
   }
 
-  private fun waitRuntimeHealthy() {
+  private fun waitRuntimeAdminHealthy() {
     proxyContainer.waitHttp(
         Wait.forHttp("/health"),
         RESTATE_RUNTIME,
         RUNTIME_META_ENDPOINT_PORT,
     )
+    LOG.debug("Runtime Admin healthy")
+  }
+
+  private fun waitRuntimeIngressHealthy() {
     proxyContainer.waitHttp(
         Wait.forHttp("/restate/health"),
         RESTATE_RUNTIME,
         RUNTIME_INGRESS_ENDPOINT_PORT,
     )
-    LOG.debug("Runtime META and Ingress healthy")
+    LOG.debug("Runtime Ingress healthy")
+  }
+
+  private fun waitRuntimeHealthy() {
+    waitRuntimeAdminHealthy()
+    waitRuntimeIngressHealthy()
   }
 
   fun discoverDeployment(client: DeploymentApi, spec: ServiceSpec) {
@@ -382,12 +393,15 @@ private constructor(
   }
 
   private fun teardownRuntime() {
-    // The reason to terminate it with the container handle is to try to perform a graceful
+    // The reason to terminate it manually with the docker client is to try to perform a graceful
     // shutdown,
     // to let flush the logs and spans exported as files.
     // We keep a short timeout though as we don't want to influence too much the teardown time of
     // the tests.
-    getContainerHandle(RESTATE_RUNTIME).terminate(1.seconds)
+    runtimeContainer.dockerClient
+        .stopContainerCmd(runtimeContainer.containerId)
+        .withTimeout(1) // This is seconds
+        .exec()
     runtimeContainer.stop()
   }
 

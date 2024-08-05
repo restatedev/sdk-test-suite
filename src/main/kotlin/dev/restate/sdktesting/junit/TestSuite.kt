@@ -35,7 +35,8 @@ class TestSuite(
       terminal: Terminal,
       baseReportDir: Path,
       filters: List<Filter<*>>,
-      printToStdout: Boolean
+      printToStdout: Boolean,
+      parallel: Boolean
   ): ExecutionResult {
     val reportDir = baseReportDir.resolve(name)
     terminal.println(
@@ -63,6 +64,9 @@ class TestSuite(
             // Config option used by RestateDeployer extensions
             .configurationParameter(
                 BaseRestateDeployerExtension.REPORT_DIR_PROPERTY_NAME, reportDir.toString())
+            .configurationParameter(
+                "junit.jupiter.execution.parallel.mode.classes.default",
+                if (parallel) "concurrent" else "same_thread")
             .build()
 
     // Configure listeners
@@ -101,7 +105,7 @@ class TestSuite(
     val builder = ConfigurationBuilderFactory.newConfigurationBuilder()
 
     val layout = builder.newLayout("PatternLayout")
-    layout.addAttribute("pattern", "%-4r %-5p [%t]%notEmpty{[%X{test}]} %c{1.2.*} - %m%n")
+    layout.addAttribute("pattern", "%-4r %-5p %notEmpty{[%X{test}]}[%t] %c{1.2.*} - %m%n")
 
     val fileAppender = builder.newAppender("log", "File")
     fileAppender.addAttribute("fileName", reportDir.resolve("testrunner.log").toString())

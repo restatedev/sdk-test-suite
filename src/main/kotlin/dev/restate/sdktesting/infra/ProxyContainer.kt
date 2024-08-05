@@ -11,6 +11,8 @@ package dev.restate.sdktesting.infra
 import eu.rekawek.toxiproxy.ToxiproxyClient
 import java.util.concurrent.TimeUnit
 import java.util.stream.IntStream
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.toJavaDuration
 import org.rnorth.ducttape.ratelimits.RateLimiterBuilder
 import org.testcontainers.containers.Network
 import org.testcontainers.containers.ToxiproxyContainer
@@ -86,6 +88,7 @@ internal class ProxyContainer(private val container: ToxiproxyContainer) {
                 .withRate(100, TimeUnit.MILLISECONDS)
                 .withConstantThroughput()
                 .build())
+        .withStartupTimeout(20.seconds.toJavaDuration())
         .waitUntilReady(WaitOnSpecificPortsTarget(listOf(mappedPort), container))
   }
 
