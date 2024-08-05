@@ -51,7 +51,7 @@ private fun kafkaClusterOptions(): RestateConfigSchema {
                           .withBrokers(listOf("PLAINTEXT://kafka:9092")))))
 }
 
-class KafkaIngressTest {
+class KafkaIngress {
 
   companion object {
     @RegisterExtension
