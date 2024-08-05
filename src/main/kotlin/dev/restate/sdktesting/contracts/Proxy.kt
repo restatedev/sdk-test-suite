@@ -18,6 +18,7 @@ data class ProxyRequest(
     val serviceName: String,
     val virtualObjectKey: String?, // If null, the request is to a service
     val handlerName: String,
+    // Bytes are encoded as array of numbers
     val message: ByteArray
 ) {
   override fun equals(other: Any?): Boolean {
@@ -55,6 +56,7 @@ data class ManyCallRequest(
 
 @Service
 interface Proxy {
+  // Bytes are encoded as array of numbers
   @Handler suspend fun call(context: Context, request: ProxyRequest): ByteArray
 
   @Handler suspend fun oneWayCall(context: Context, request: ProxyRequest)

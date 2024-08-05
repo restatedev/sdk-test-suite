@@ -242,6 +242,7 @@ private constructor(
           .withNetworkAliases(serviceName)
           .withEnv(RESTATE_URI_ENV, restateURI)
           .withLogConsumer(ContainerLogger(testReportDir, serviceName))
+          .withStartupAttempts(3) // For podman
           .start()
       LOG.debug(
           "Started service container {} with endpoint {}",
@@ -259,6 +260,7 @@ private constructor(
           .withNetworkAliases(containerHost)
           .withEnv(RESTATE_URI_ENV, restateURI)
           .withLogConsumer(ContainerLogger(testReportDir, containerHost))
+          .withStartupAttempts(3) // For podman
           .start()
       LOG.debug("Started container {} with image {}", containerHost, container.dockerImageName)
     }
@@ -267,18 +269,6 @@ private constructor(
   private fun deployRuntime(testReportDir: String) {
     // Generate test report directory
     LOG.debug("Writing container logs to {}", testReportDir)
-
-    // Deploy additional containers
-    additionalContainers.forEach { (containerHost, container) ->
-      container.networkAliases = ArrayList()
-      container
-          .withNetwork(network)
-          .withNetworkAliases(containerHost)
-          .withLogConsumer(ContainerLogger(testReportDir, containerHost))
-          .start()
-      LOG.debug("Started container {} with image {}", containerHost, container.dockerImageName)
-    }
-
     LOG.debug("Starting runtime container '{}'", config.restateContainerImage)
 
     // Configure runtime container
@@ -294,6 +284,7 @@ private constructor(
         .withNetwork(network)
         .withNetworkAliases(RESTATE_RUNTIME)
         .withLogConsumer(ContainerLogger(testReportDir, "restate-runtime"))
+        .withStartupAttempts(3) // For podman
 
     if (config.stateDirectoryMount != null) {
       val stateDir = File(config.stateDirectoryMount)
