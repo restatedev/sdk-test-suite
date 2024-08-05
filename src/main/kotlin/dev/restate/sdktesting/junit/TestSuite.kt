@@ -15,17 +15,12 @@ import dev.restate.sdktesting.infra.getGlobalConfig
 import dev.restate.sdktesting.infra.registerGlobalConfig
 import java.io.PrintWriter
 import java.nio.file.Path
-import kotlin.jvm.optionals.getOrNull
 import org.apache.logging.log4j.Level
-import org.apache.logging.log4j.ThreadContext
 import org.apache.logging.log4j.core.config.Configurator
 import org.apache.logging.log4j.core.config.builder.api.ConfigurationBuilderFactory
 import org.apache.logging.log4j.core.config.builder.impl.BuiltConfiguration
 import org.junit.platform.engine.Filter
-import org.junit.platform.engine.TestExecutionResult
 import org.junit.platform.engine.discovery.DiscoverySelectors
-import org.junit.platform.engine.support.descriptor.ClassSource
-import org.junit.platform.engine.support.descriptor.MethodSource
 import org.junit.platform.launcher.*
 import org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder
 import org.junit.platform.launcher.core.LauncherFactory
@@ -80,63 +75,8 @@ class TestSuite(
             reportDir.resolve("testrunner.stdout"),
             reportDir.resolve("testrunner.stderr"),
             errWriter)
-    val logTestEventsListener =
-        object : TestExecutionListener {
-          @Volatile var testPlan: TestPlan? = null
-
-          override fun testPlanExecutionStarted(testPlan: TestPlan) {
-            this.testPlan = testPlan
-          }
-
-          override fun executionFinished(
-              testIdentifier: TestIdentifier,
-              testExecutionResult: TestExecutionResult
-          ) {
-            if (testIdentifier.isTest) {
-              val name = describeTestIdentifier(name, testPlan!!, testIdentifier)
-              when (testExecutionResult.status!!) {
-                TestExecutionResult.Status.SUCCESSFUL -> terminal.println("✅ $name")
-                TestExecutionResult.Status.ABORTED -> terminal.println("❌ $name")
-                TestExecutionResult.Status.FAILED -> {
-                  terminal.println("❌ $name")
-                }
-              }
-            }
-            if (testIdentifier.source.getOrNull() is ClassSource) {
-              val name = describeTestIdentifier(name, testPlan!!, testIdentifier)
-              when (testExecutionResult.status!!) {
-                TestExecutionResult.Status.ABORTED -> terminal.println("❌ $name init")
-                TestExecutionResult.Status.FAILED -> {
-                  terminal.println("❌ $name init")
-                }
-                else -> {}
-              }
-            }
-          }
-        }
-    val injectLoggingContextListener =
-        object : TestExecutionListener {
-          val TEST_NAME = "test"
-
-          override fun executionStarted(testIdentifier: TestIdentifier) {
-            val displayName =
-                when (val source = testIdentifier.source.getOrNull()) {
-                  is ClassSource -> source.className
-                  is MethodSource -> "${source.className}#${source.methodName}"
-                  else -> null
-                }
-            if (displayName != null) {
-              ThreadContext.put(TEST_NAME, displayName)
-            }
-          }
-
-          override fun executionFinished(
-              testIdentifier: TestIdentifier,
-              testExecutionResult: TestExecutionResult
-          ) {
-            ThreadContext.remove(TEST_NAME)
-          }
-        }
+    val logTestEventsListener = LogTestEventsToTerminalListener(name, terminal)
+    val injectLoggingContextListener = InjectLog4jContextListener(name)
 
     // Launch
     LauncherFactory.openSession().use { session ->

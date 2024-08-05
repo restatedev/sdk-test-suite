@@ -91,7 +91,7 @@ class ExecutionResult(
     val classesFailures =
         this.classesResults.toList().filter { it.second is Aborted || it.second is Failed }
     val testsFailures =
-        this.classesResults.toList().filter { it.second is Aborted || it.second is Failed }
+        this.testResults.toList().filter { it.second is Aborted || it.second is Failed }
 
     fun printFailures(failureList: List<Pair<TestIdentifier, TestResult>>) {
       for (failure in failureList) {
