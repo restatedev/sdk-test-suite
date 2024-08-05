@@ -151,16 +151,17 @@ Run test suite, executing the service as container.
       val failures = report.failedTests
       if (failures.isNotEmpty() || exclusions.isNotEmpty()) {
         newExclusions[testSuite.name] =
-            failures
-                .mapNotNull { it.source.getOrNull() }
-                .mapNotNull {
-                  when (it) {
-                    is ClassSource -> it.className!!
-                    is MethodSource -> it.className!!
-                    else -> null
-                  }
-                }
-                .distinct() + exclusions
+            (failures
+                    .mapNotNull { it.source.getOrNull() }
+                    .mapNotNull {
+                      when (it) {
+                        is ClassSource -> it.className!!
+                        is MethodSource -> it.className!!
+                        else -> null
+                      }
+                    }
+                    .distinct() + exclusions)
+                .sorted()
       }
       if (failures.isNotEmpty()) {
         newFailures = true
@@ -169,7 +170,7 @@ Run test suite, executing the service as container.
 
     // Write out the exclusions file
     FileOutputStream(testRunnerOptions.reportDir.resolve("exclusions.new.yaml").toFile()).use {
-      Yaml.default.encodeToStream(ExclusionsFile(newExclusions), it)
+      Yaml.default.encodeToStream(ExclusionsFile(newExclusions.toSortedMap()), it)
     }
 
     // Print final report
