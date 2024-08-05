@@ -102,6 +102,16 @@ class TestSuite(
                 }
               }
             }
+            if (testIdentifier.source.getOrNull() is ClassSource) {
+              val name = describeTestIdentifier(name, testPlan!!, testIdentifier)
+              when (testExecutionResult.status!!) {
+                TestExecutionResult.Status.ABORTED -> terminal.println("❌ $name init")
+                TestExecutionResult.Status.FAILED -> {
+                  terminal.println("❌ $name init")
+                }
+                else -> {}
+              }
+            }
           }
         }
     val injectLoggingContextListener =
