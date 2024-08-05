@@ -9,7 +9,9 @@
 package dev.restate.sdktesting.infra
 
 import eu.rekawek.toxiproxy.ToxiproxyClient
+import java.util.concurrent.TimeUnit
 import java.util.stream.IntStream
+import org.rnorth.ducttape.ratelimits.RateLimiterBuilder
 import org.testcontainers.containers.Network
 import org.testcontainers.containers.ToxiproxyContainer
 import org.testcontainers.containers.wait.strategy.HttpWaitStrategy
@@ -79,6 +81,11 @@ internal class ProxyContainer(private val container: ToxiproxyContainer) {
             ?: throw IllegalArgumentException("Cannot wait on non existing port")
     httpWaitStrategy
         .forPort(mappedPort)
+        .withRateLimiter(
+            RateLimiterBuilder.newBuilder()
+                .withRate(100, TimeUnit.MILLISECONDS)
+                .withConstantThroughput()
+                .build())
         .waitUntilReady(WaitOnSpecificPortsTarget(listOf(mappedPort), container))
   }
 
