@@ -12,8 +12,6 @@ import com.charleskorn.kaml.Yaml
 import com.charleskorn.kaml.decodeFromStream
 import com.charleskorn.kaml.encodeToStream
 import com.github.ajalt.clikt.core.CliktCommand
-import com.github.ajalt.clikt.core.findOrSetObject
-import com.github.ajalt.clikt.core.requireObject
 import com.github.ajalt.clikt.core.subcommands
 import com.github.ajalt.clikt.parameters.arguments.*
 import com.github.ajalt.clikt.parameters.groups.OptionGroup
@@ -44,19 +42,12 @@ import org.junit.platform.engine.discovery.ClassNameFilter
 import org.junit.platform.engine.support.descriptor.ClassSource
 import org.junit.platform.engine.support.descriptor.MethodSource
 
-data class CommonConfig(var verbose: Boolean = false)
-
 @Serializable data class ExclusionsFile(val exclusions: Map<String, List<String>> = emptyMap())
 
 class RestateSdkTestSuite : CliktCommand() {
-  val verbose by option().flag("--no-verbose", default = false)
-  val commonConfig by findOrSetObject { CommonConfig() }
-
   override fun run() {
     // Disable log4j2 JMX, this prevents reconfiguration
     System.setProperty("log4j2.disable.jmx", "true")
-
-    commonConfig.verbose = verbose
   }
 }
 
@@ -95,11 +86,10 @@ class FilterOptions : OptionGroup() {
           .required()
           .help(
               "Test suite to run. Available: ${listOf("all") + TestSuites.allSuites().map { it.name }}")
-  val testName by option().help("FQCN of the test to run for the given suite")
+  val testName by option().help("Name of the test to run for the given suite")
 }
 
 abstract class TestRunCommand(help: String) : CliktCommand(help) {
-  val commonConfig by requireObject<CommonConfig>()
   val testRunnerOptions by TestRunnerOptions()
 }
 
@@ -111,6 +101,11 @@ Run test suite, executing the service as container.
             .trimIndent()) {
   val filter by FilterOptions().cooccurring()
   val exclusionsFile by option().help("File containing the excluded tests")
+  val parallel by
+      option(help = "Enable parallel testing")
+          .help(
+              "If set, runs tests in parallel. We suggest running tests sequentially when using podman")
+          .flag("--sequential", default = true)
   val imageName by argument()
 
   override fun run() {
@@ -118,7 +113,8 @@ Run test suite, executing the service as container.
 
     val restateDeployerConfig =
         RestateDeployerConfig(
-            mapOf(ServiceSpec.DEFAULT_SERVICE_NAME to ContainerServiceDeploymentConfig(imageName)))
+            mapOf(ServiceSpec.DEFAULT_SERVICE_NAME to ContainerServiceDeploymentConfig(imageName)),
+            deployInParallel = parallel)
 
     // Register global config of the deployer
     registerGlobalConfig(testRunnerOptions.applyToDeployerConfig(restateDeployerConfig))
@@ -138,15 +134,24 @@ Run test suite, executing the service as container.
     val newExclusions = mutableMapOf<String, List<String>>()
     var newFailures = false
     for (testSuite in testSuites) {
-      val exclusions = loadedExclusions.exclusions[testSuite.name] ?: emptyList()
+      val exclusions =
+          (loadedExclusions.exclusions[testSuite.name] ?: emptyList()).map {
+            testClassNameToFQCN(it)
+          }
       val exclusionsFilters = exclusions.map { ClassNameFilter.excludeClassNamePatterns(it) }
       val cliOptionFilter =
-          filter?.testName?.let { listOf(ClassNameFilter.includeClassNamePatterns(it)) }
+          filter?.testName?.let {
+            listOf(ClassNameFilter.includeClassNamePatterns(testClassNameToFQCN(it)))
+          }
               ?: emptyList<Filter<*>>()
 
       val report =
           testSuite.runTests(
-              terminal, testRunnerOptions.reportDir, exclusionsFilters + cliOptionFilter, false)
+              terminal,
+              testRunnerOptions.reportDir,
+              exclusionsFilters + cliOptionFilter,
+              false,
+              parallel)
 
       reports.add(report)
       val failures = report.failedTests
@@ -218,7 +223,7 @@ Run test suite, without executing the service inside a container.
       option()
           .default(TestSuites.DEFAULT_SUITE.name)
           .help("Test suite to run. Available: ${TestSuites.allSuites().map { it.name }}")
-  val testName by option().required().help("FQCN of the test to run for the given suite")
+  val testName by option().required().help("Name of the test to run for the given suite")
   val localContainers by
       argument()
           .convert { localContainerSpec ->
@@ -245,9 +250,10 @@ Run test suite, without executing the service inside a container.
 
     // Resolve test configurations
     val testSuite = TestSuites.resolveSuites(testSuite)[0]
-    val testFilters = listOf(ClassNameFilter.includeClassNamePatterns(testName))
+    val testFilters =
+        listOf(ClassNameFilter.includeClassNamePatterns(testClassNameToFQCN(testName)))
 
-    val report = testSuite.runTests(terminal, testRunnerOptions.reportDir, testFilters, true)
+    val report = testSuite.runTests(terminal, testRunnerOptions.reportDir, testFilters, true, false)
 
     report.printFailuresTo(terminal)
 
@@ -259,3 +265,11 @@ Run test suite, without executing the service inside a container.
 }
 
 fun main(args: Array<String>) = RestateSdkTestSuite().subcommands(Run(), Debug()).main(args)
+
+private fun testClassNameToFQCN(className: String): String {
+  if (className.contains('.')) {
+    // Then it's FQCN
+    return className
+  }
+  return "dev.restate.sdktesting.tests.${className}"
+}

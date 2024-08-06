@@ -14,9 +14,7 @@ import org.testcontainers.utility.DockerImageName
 
 object LocalAlwaysPullPolicy : AbstractImagePullPolicy() {
   override fun shouldPullCached(imageName: DockerImageName, localImageData: ImageData): Boolean {
-    return !(
-        imageName.registry.equals("restate.local", ignoreCase = true) ||
-        imageName.registry.equals("localhost", ignoreCase = true)
-    )
+    return !(imageName.registry.equals("restate.local", ignoreCase = true) ||
+        imageName.registry.equals("localhost", ignoreCase = true))
   }
 }

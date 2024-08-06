@@ -10,6 +10,8 @@ package dev.restate.sdktesting.infra
 
 import com.github.dockerjava.api.command.InspectContainerResponse
 import org.testcontainers.containers.wait.strategy.WaitStrategyTarget
+import org.testcontainers.images.ImagePullPolicy
+import org.testcontainers.images.PullPolicy
 
 internal open class NotCachedContainerInfo(private val delegate: WaitStrategyTarget) :
     WaitStrategyTarget by delegate {
@@ -26,5 +28,13 @@ internal class WaitOnSpecificPortsTarget(
 ) : NotCachedContainerInfo(delegate) {
   override fun getExposedPorts(): MutableList<Int> {
     return ports.toMutableList()
+  }
+}
+
+internal fun dev.restate.sdktesting.infra.PullPolicy.toTestContainersImagePullPolicy():
+    ImagePullPolicy {
+  return when (this) {
+    dev.restate.sdktesting.infra.PullPolicy.ALWAYS -> LocalAlwaysPullPolicy
+    dev.restate.sdktesting.infra.PullPolicy.CACHED -> PullPolicy.defaultPolicy()
   }
 }

@@ -10,7 +10,9 @@ package dev.restate.sdktesting.infra
 
 import com.github.dockerjava.api.DockerClient
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
+import kotlinx.coroutines.delay
 import org.apache.logging.log4j.LogManager
 import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.startupcheck.IsRunningStartupCheckStrategy
@@ -26,7 +28,7 @@ internal constructor(
 
   private val logger = LogManager.getLogger(ContainerHandle::class.java)
 
-  fun terminateAndRestart() {
+  suspend fun terminateAndRestart() {
     logger.info(
         "Going to terminate and restart the container {} with hostnames {}.",
         container.containerName,
@@ -38,7 +40,7 @@ internal constructor(
     postStart()
   }
 
-  fun killAndRestart() {
+  suspend fun killAndRestart() {
     logger.info(
         "Going to kill and restart the container {} with hostnames {}.",
         container.containerName,
@@ -50,11 +52,11 @@ internal constructor(
     postStart()
   }
 
-  fun terminate() {
+  suspend fun terminate() {
     terminate(10.seconds)
   }
 
-  fun terminate(timeout: Duration) {
+  suspend fun terminate(timeout: Duration) {
     logger.info(
         "Going to terminate the container {} with hostnames {}.",
         container.containerName,
@@ -64,7 +66,7 @@ internal constructor(
     }
   }
 
-  fun kill() {
+  suspend fun kill() {
     logger.info(
         "Going to kill the container {} with hostnames {}.",
         container.containerName,
@@ -74,7 +76,7 @@ internal constructor(
     }
   }
 
-  fun start() {
+  suspend fun start() {
     if (!isRunning()) {
       logger.info(
           "Going to start the container {} with hostnames {}.",
@@ -88,7 +90,7 @@ internal constructor(
     }
   }
 
-  fun isRunning(): Boolean {
+  suspend fun isRunning(): Boolean {
     return retryDockerClientCommand { dockerClient, containerId ->
           dockerClient.inspectContainerCmd(containerId).exec()
         }
@@ -117,7 +119,7 @@ internal constructor(
     logger.info("Container {} started and passed all the checks.", container.containerName)
   }
 
-  private fun <T> retryDockerClientCommand(fn: (DockerClient, String) -> T): T {
+  private suspend fun <T> retryDockerClientCommand(fn: (DockerClient, String) -> T): T {
     val client = container.dockerClient
     val containerId = container.containerId
 
@@ -129,6 +131,7 @@ internal constructor(
       try {
         return fn(client, containerId)
       } catch (exception: Throwable) {
+        delay(20.milliseconds)
         logger.warn(
             "Error when trying to execute docker command: {}. This might be a problem with the local docker daemon.",
             exception.message)

@@ -12,6 +12,7 @@ import java.net.URL
 import org.apache.logging.log4j.LogManager
 import org.testcontainers.Testcontainers
 import org.testcontainers.containers.GenericContainer
+import org.testcontainers.containers.Network
 import org.testcontainers.utility.DockerImageName
 
 /** Definition of a service to deploy. */
@@ -55,17 +56,23 @@ data class ServiceSpec(
   }
 
   internal fun toHostNameContainer(
-      config: RestateDeployerConfig
-  ): Pair<String, GenericContainer<*>>? {
+      config: RestateDeployerConfig,
+      network: Network,
+      restateURI: String,
+  ): Pair<String, ServiceDeploymentContainer>? {
     LOG.info("Service spec {} will use services {}", name, services)
     val servicesEnv = services.joinToString(separator = ",")
+    val totalEnvs = envs + mapOf("SERVICES" to servicesEnv)
+
     return when (val serviceConfig = config.getServiceDeploymentConfig(name)) {
       is ContainerServiceDeploymentConfig -> {
         name to
-            GenericContainer(DockerImageName.parse(serviceConfig.imageName))
-                .withEnv("PORT", "9080")
-                .withEnv(envs)
-                .withEnv("SERVICES", servicesEnv)
+            ServiceDeploymentContainer(
+                DockerImageName.parse(serviceConfig.imageName),
+                name,
+                network,
+                restateURI,
+                totalEnvs)
       }
       is LocalForwardServiceDeploymentConfig -> {
         Testcontainers.exposeHostPorts(serviceConfig.port)
@@ -73,7 +80,7 @@ data class ServiceSpec(
             """
               Service spec '$name' won't deploy a container, but will use locally running service deployment:
               * Should be available at 'localhost:${serviceConfig.port}'
-              * Should be configured with env variables ${envs + mapOf("SERVICES" to servicesEnv)}
+              * Should be configured with env variables ${totalEnvs}
           """
                 .trimIndent())
         null

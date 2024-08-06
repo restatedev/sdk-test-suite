@@ -17,7 +17,7 @@ dependencyResolutionManagement {
       library("restate-sdk-api-kotlin-gen", "dev.restate", "sdk-api-kotlin-gen")
           .versionRef("restate")
 
-      version("log4j", "2.19.0")
+      version("log4j", "2.23.1")
       library("log4j-api", "org.apache.logging.log4j", "log4j-api").versionRef("log4j")
       library("log4j-core", "org.apache.logging.log4j", "log4j-core").versionRef("log4j")
       library("log4j-slf4j", "org.apache.logging.log4j", "log4j-slf4j-impl").versionRef("log4j")
@@ -51,7 +51,7 @@ dependencyResolutionManagement {
       version("assertj", "3.24.2")
       library("assertj", "org.assertj", "assertj-core").versionRef("assertj")
 
-      version("testcontainers", "1.19.7")
+      version("testcontainers", "1.20.1")
       library("testcontainers-core", "org.testcontainers", "testcontainers")
           .versionRef("testcontainers")
       library("testcontainers-kafka", "org.testcontainers", "kafka").versionRef("testcontainers")

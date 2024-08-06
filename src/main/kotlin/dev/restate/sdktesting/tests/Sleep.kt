@@ -24,7 +24,7 @@ import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
-import org.assertj.core.api.Assertions
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Timeout
@@ -54,7 +54,7 @@ class Sleep {
           .sleepConcurrently(listOf(sleepDuration.inWholeMilliseconds))
     }
 
-    Assertions.assertThat(elapsed.nanoseconds).isGreaterThanOrEqualTo(sleepDuration)
+    assertThat(elapsed.nanoseconds).isGreaterThanOrEqualTo(sleepDuration)
   }
 
   @Test

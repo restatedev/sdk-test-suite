@@ -14,10 +14,7 @@ import dev.restate.sdk.common.Target
 import dev.restate.sdktesting.contracts.CounterClient
 import dev.restate.sdktesting.contracts.CounterDefinitions
 import dev.restate.sdktesting.contracts.NonDeterministicDefinitions
-import dev.restate.sdktesting.infra.InjectClient
-import dev.restate.sdktesting.infra.RestateDeployer
-import dev.restate.sdktesting.infra.RestateDeployerExtension
-import dev.restate.sdktesting.infra.ServiceSpec
+import dev.restate.sdktesting.infra.*
 import kotlinx.coroutines.test.runTest
 import org.assertj.core.api.Assertions.*
 import org.junit.jupiter.api.Tag
@@ -33,7 +30,7 @@ class NonDeterminismErrors {
   companion object {
     @RegisterExtension
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
-      withInvokerRetryPolicy(RestateDeployer.RetryPolicy.None)
+      withInvokerRetryPolicy(RetryPolicy.None)
       withServiceSpec(
           ServiceSpec.defaultBuilder()
               .withServices(

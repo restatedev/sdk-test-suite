@@ -19,7 +19,7 @@ import org.junit.platform.launcher.TestPlan
 class InjectLog4jContextListener(val suiteName: String) : TestExecutionListener {
 
   companion object {
-    const val TEST_NAME = "test"
+    const val TEST_CLASS = "test_class"
   }
 
   @Volatile var testPlan: TestPlan? = null
@@ -29,9 +29,8 @@ class InjectLog4jContextListener(val suiteName: String) : TestExecutionListener 
   }
 
   override fun executionStarted(testIdentifier: TestIdentifier) {
-    if (testIdentifier.isTest || testIdentifier.source.getOrNull() is ClassSource) {
-      val displayName = describeTestIdentifier(suiteName, testPlan!!, testIdentifier)
-      ThreadContext.put(TEST_NAME, displayName)
+    if (testIdentifier.isContainer && testIdentifier.source.getOrNull() is ClassSource) {
+      ThreadContext.put(TEST_CLASS, describeTestIdentifier(suiteName, testPlan!!, testIdentifier))
     }
   }
 
@@ -39,6 +38,8 @@ class InjectLog4jContextListener(val suiteName: String) : TestExecutionListener 
       testIdentifier: TestIdentifier,
       testExecutionResult: TestExecutionResult
   ) {
-    ThreadContext.remove(TEST_NAME)
+    if (testIdentifier.isContainer && testIdentifier.source.getOrNull() is ClassSource) {
+      ThreadContext.remove(TEST_CLASS)
+    }
   }
 }
