@@ -15,12 +15,14 @@ import java.io.File
 import org.apache.logging.log4j.LogManager
 import org.testcontainers.containers.BindMode
 import org.testcontainers.containers.GenericContainer
+import org.testcontainers.containers.Network
 import org.testcontainers.containers.SelinuxContext
 import org.testcontainers.images.builder.Transferable
 import org.testcontainers.utility.DockerImageName
 
 class RestateContainer(
     config: RestateDeployerConfig,
+    network: Network,
     envs: Map<String, String>,
     configSchema: RestateConfigSchema?,
     copyToContainer: List<Pair<String, Transferable>>
@@ -40,8 +42,8 @@ class RestateContainer(
     withEnv("RESTATE_ADMIN__BIND_ADDRESS", "0.0.0.0:$RUNTIME_META_ENDPOINT_PORT")
     withEnv("RESTATE_INGRESS__BIND_ADDRESS", "0.0.0.0:$RUNTIME_INGRESS_ENDPOINT_PORT")
 
-    withNetwork(network)
-    withNetworkAliases(RESTATE_RUNTIME)
+    this.network = network
+    this.networkAliases = arrayListOf(RESTATE_RUNTIME)
     withStartupAttempts(3) // For podman
 
     if (config.stateDirectoryMount != null) {

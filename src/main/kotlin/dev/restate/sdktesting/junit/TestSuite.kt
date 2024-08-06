@@ -50,7 +50,8 @@ class TestSuite(
     registerGlobalConfig(getGlobalConfig().copy(additionalRuntimeEnvs = additionalEnvs))
 
     // Prepare Log4j2 configuration
-    Configurator.reconfigure(prepareLog4j2Config(reportDir, printToStdout))
+    val log4j2Configuration = prepareLog4j2Config(reportDir, printToStdout)
+    Configurator.reconfigure(log4j2Configuration)
 
     // Prepare launch request
     val request =
@@ -104,37 +105,43 @@ class TestSuite(
   private fun prepareLog4j2Config(reportDir: Path, printToStdout: Boolean): BuiltConfiguration {
     val builder = ConfigurationBuilderFactory.newConfigurationBuilder()
 
-    val layout = builder.newLayout("PatternLayout")
-    layout.addAttribute("pattern", "%-4r %-5p %notEmpty{[%X{test}]}[%t] %c{1.2.*} - %m%n")
+    val layout =
+        builder
+            .newLayout("PatternLayout")
+            .addAttribute("pattern", "%-4r %-5p [%X{test_class}][%t] %c{1.2.*} - %m%n")
 
-    val fileAppender = builder.newAppender("log", "File")
-    fileAppender.addAttribute("fileName", reportDir.resolve("testrunner.log").toString())
-    fileAppender.add(layout)
+    val fileAppender =
+        builder
+            .newAppender("log", "File")
+            .addAttribute("fileName", reportDir.resolve("testrunner.log").toString())
+            .add(layout)
 
-    val rootLogger = builder.newRootLogger(Level.INFO)
-    rootLogger.add(builder.newAppenderRef("log"))
+    val restateLogger =
+        builder
+            .newLogger("dev.restate", Level.DEBUG)
+            .add(builder.newAppenderRef("log"))
+            .addAttribute("additivity", false)
 
-    val testContainersLogger = builder.newLogger("org.testcontainers", Level.INFO)
-    testContainersLogger.add(builder.newAppenderRef("log"))
-    testContainersLogger.addAttribute("additivity", false)
+    val testContainersLogger =
+        builder
+            .newLogger("org.testcontainers", Level.INFO)
+            .add(builder.newAppenderRef("log"))
+            .addAttribute("additivity", false)
 
-    val restateLogger = builder.newLogger("dev.restate", Level.DEBUG)
-    restateLogger.add(builder.newAppenderRef("log"))
-    restateLogger.addAttribute("additivity", false)
+    val rootLogger = builder.newRootLogger(Level.WARN).add(builder.newAppenderRef("log"))
 
     if (printToStdout) {
-      val consoleAppender = builder.newAppender("stdout", "Console")
-      consoleAppender.add(layout)
+      val consoleAppender = builder.newAppender("stdout", "Console").add(layout)
       builder.add(consoleAppender)
 
       rootLogger.add(builder.newAppenderRef("stdout"))
-      testContainersLogger.add(builder.newAppenderRef("stdout"))
       restateLogger.add(builder.newAppenderRef("stdout"))
+      testContainersLogger.add(builder.newAppenderRef("stdout"))
     }
 
     builder.add(fileAppender)
-    builder.add(testContainersLogger)
     builder.add(restateLogger)
+    builder.add(testContainersLogger)
     builder.add(rootLogger)
 
     return builder.build()

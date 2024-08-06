@@ -29,7 +29,7 @@ class ServiceDeploymentContainer(
     withEnv("PORT", "9080")
     withEnv(envs)
     networkAliases = ArrayList()
-    withNetwork(network)
+    this.network = network
     withNetworkAliases(hostname)
     withEnv(RESTATE_URI_ENV, restateURI)
     withStartupAttempts(3)

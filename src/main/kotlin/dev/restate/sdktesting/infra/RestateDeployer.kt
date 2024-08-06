@@ -42,28 +42,6 @@ private constructor(
     configSchema: RestateConfigSchema?
 ) : AutoCloseable, ExtensionContext.Store.CloseableResource {
 
-  // Perhaps at some point we could autogenerate these from the openapi doc and also remove the need
-  // to manually implement these serialization routines
-  sealed class RetryPolicy {
-
-    abstract fun toInvokerSetupEnv(): Map<String, String>
-
-    object None : RetryPolicy() {
-      override fun toInvokerSetupEnv(): Map<String, String> {
-        return mapOf("RESTATE_WORKER__INVOKER__RETRY_POLICY__TYPE" to "none")
-      }
-    }
-
-    class FixedDelay(private val interval: String, private val maxAttempts: Int) : RetryPolicy() {
-      override fun toInvokerSetupEnv(): Map<String, String> {
-        return mapOf(
-            "RESTATE_WORKER__INVOKER__RETRY_POLICY__TYPE" to "fixed-delay",
-            "RESTATE_WORKER__INVOKER__RETRY_POLICY__INTERVAL" to interval,
-            "RESTATE_WORKER__INVOKER__RETRY_POLICY__MAX_ATTEMPTS" to maxAttempts.toString())
-      }
-    }
-  }
-
   companion object {
     internal const val RESTATE_URI_ENV = "RESTATE_URI"
 
@@ -77,7 +55,7 @@ private constructor(
     }
 
     fun reportDirectory(baseReportDir: Path, testClass: Class<*>): String {
-      val dir = baseReportDir.resolve(testClass.canonicalName).toAbsolutePath().toString()
+      val dir = baseReportDir.resolve(testClass.simpleName).toAbsolutePath().toString()
       File(dir).mkdirs()
       return dir
     }
@@ -185,7 +163,7 @@ private constructor(
           ToxiproxyContainer("ghcr.io/shopify/toxiproxy:2.5.0")
               .withImagePullPolicy(config.imagePullPolicy.toTestContainersImagePullPolicy()))
   private val runtimeContainer =
-      RestateContainer(config, runtimeContainerEnvs, configSchema, copyToContainer)
+      RestateContainer(config, network, runtimeContainerEnvs, configSchema, copyToContainer)
   private val deployedContainers: Map<String, ContainerHandle> =
       mapOf(
           RESTATE_RUNTIME to
@@ -214,7 +192,7 @@ private constructor(
   }
 
   fun deployAll(testReportDir: String) {
-    LOG.debug("Writing container logs to {}", testReportDir)
+    LOG.info("Writing container logs to {}", testReportDir)
 
     // This generates the network down the hood
     network.id
@@ -239,7 +217,7 @@ private constructor(
     }
 
     // Configure proxy
-    configureProxy(testReportDir)
+    configureProxy()
 
     // Let's execute service discovery to register the services
     waitRuntimeAdminHealthy()
@@ -269,15 +247,13 @@ private constructor(
 
   private fun deployServicesConcurrently(): List<CompletableFuture<*>> {
     return serviceContainers.map { (serviceName, serviceContainer) ->
-      CompletableFuture.runAsync(
-          {
-            serviceContainer.second.start()
-            LOG.debug(
-                "Started service container {} with endpoint {}",
-                serviceName,
-                serviceContainer.first.getEndpointUrl(config))
-          },
-          startContainersThreadPoolExecutor)
+      runOnStartupThreadPool {
+        serviceContainer.second.start()
+        LOG.debug(
+            "Started service container {} with endpoint {}",
+            serviceName,
+            serviceContainer.first.getEndpointUrl(config))
+      }
     }
   }
 
@@ -293,13 +269,10 @@ private constructor(
 
   private fun deployAdditionalContainersConcurrently(): List<CompletableFuture<*>> {
     return additionalContainers.map { (containerHost, container) ->
-      CompletableFuture.runAsync(
-          {
-            container.start()
-            LOG.debug(
-                "Started container {} with image {}", containerHost, container.dockerImageName)
-          },
-          startContainersThreadPoolExecutor)
+      runOnStartupThreadPool {
+        container.start()
+        LOG.debug("Started container {} with image {}", containerHost, container.dockerImageName)
+      }
     }
   }
 
@@ -311,20 +284,17 @@ private constructor(
   }
 
   private fun deployRuntime(): CompletableFuture<*> {
-    return CompletableFuture.runAsync(
-        {
-          runtimeContainer.start()
-          LOG.debug("Restate runtime started. Container id {}", runtimeContainer.containerId)
-        },
-        startContainersThreadPoolExecutor)
+    return runOnStartupThreadPool {
+      runtimeContainer.start()
+      LOG.debug("Restate runtime started. Container id {}", runtimeContainer.containerId)
+    }
   }
 
   private fun deployProxy(testReportDir: String): CompletableFuture<*> {
-    return CompletableFuture.runAsync(
-        { proxyContainer.start(network, testReportDir) }, startContainersThreadPoolExecutor)
+    return runOnStartupThreadPool { proxyContainer.start(network, testReportDir) }
   }
 
-  private fun configureProxy(testReportDir: String) {
+  private fun configureProxy() {
     // We use an external proxy to access from the test code to the restate container in order to
     // retain the tcp port binding across restarts.
     // Proxy runtime ports
@@ -445,6 +415,24 @@ private constructor(
           "Cannot find container $hostName. Most likely, there is a bug in the test code.")
     }
     return deployedContainers[hostName]!!
+  }
+
+  private fun runOnStartupThreadPool(fn: () -> Unit): CompletableFuture<Void> {
+    val contextMap: Map<String, String> = ThreadContext.getImmutableContext()
+    val contextStackTop: String = ThreadContext.peek()
+
+    return CompletableFuture.runAsync(
+        {
+          ThreadContext.putAll(contextMap)
+          ThreadContext.push(contextStackTop)
+          try {
+            fn()
+          } finally {
+            ThreadContext.pop()
+            ThreadContext.clearMap()
+          }
+        },
+        startContainersThreadPoolExecutor)
   }
 
   override fun close() {

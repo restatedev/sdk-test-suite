@@ -12,7 +12,7 @@ import dev.restate.sdk.annotation.Handler
 import dev.restate.sdk.annotation.VirtualObject
 import dev.restate.sdk.kotlin.ObjectContext
 
-@VirtualObject
+@VirtualObject(name = "Failing")
 interface Failing {
   @Handler suspend fun terminallyFailingCall(context: ObjectContext, errorMessage: String)
 
