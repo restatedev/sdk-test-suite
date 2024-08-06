@@ -11,6 +11,7 @@ package dev.restate.sdktesting.infra
 import dev.restate.sdktesting.infra.RestateDeployer.Companion.RESTATE_URI_ENV
 import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.Network
+import org.testcontainers.images.PullPolicy
 import org.testcontainers.utility.DockerImageName
 
 class ServiceDeploymentContainer(
@@ -22,6 +23,9 @@ class ServiceDeploymentContainer(
 ) : GenericContainer<ServiceDeploymentContainer>(dockerImageName) {
 
   init {
+    // we set the pull policy to default as usually the service image is local
+    withImagePullPolicy(PullPolicy.defaultPolicy())
+
     withEnv("PORT", "9080")
     withEnv(envs)
     networkAliases = ArrayList()

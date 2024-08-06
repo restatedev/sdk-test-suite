@@ -133,9 +133,9 @@ class TestSuite(
     }
 
     builder.add(fileAppender)
-    builder.add(rootLogger)
     builder.add(testContainersLogger)
     builder.add(restateLogger)
+    builder.add(rootLogger)
 
     return builder.build()
   }

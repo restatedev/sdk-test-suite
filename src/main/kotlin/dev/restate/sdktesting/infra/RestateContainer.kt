@@ -27,12 +27,13 @@ class RestateContainer(
 ) : GenericContainer<RestateContainer>(DockerImageName.parse(config.restateContainerImage)) {
   companion object {
     private val LOG = LogManager.getLogger(RestateContainer::class.java)
-
     private val TOML_MAPPER = ObjectMapper(TomlFactory())
   }
 
   init {
     LOG.debug("Using runtime image '{}'", config.restateContainerImage)
+
+    withImagePullPolicy(config.imagePullPolicy.toTestContainersImagePullPolicy())
 
     withEnv(envs)
     // These envs should not be overriden by envs

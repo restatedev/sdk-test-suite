@@ -16,19 +16,17 @@ import dev.restate.admin.model.RegisterDeploymentRequestAnyOf
 import dev.restate.sdktesting.infra.runtimeconfig.IngressOptions
 import dev.restate.sdktesting.infra.runtimeconfig.RestateConfigSchema
 import java.io.File
-import java.lang.reflect.Method
 import java.net.URI
 import java.net.http.HttpClient
 import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Executors
 import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.ThreadContext
 import org.junit.jupiter.api.extension.ExtensionContext
 import org.junit.jupiter.api.fail
 import org.testcontainers.containers.*
 import org.testcontainers.containers.wait.strategy.Wait
-import org.testcontainers.images.ImagePullPolicy
-import org.testcontainers.images.PullPolicy
 import org.testcontainers.images.builder.Transferable
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ser.impl.SimpleBeanPropertyFilter
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ser.impl.SimpleFilterProvider
@@ -181,15 +179,13 @@ private constructor(
             }
           }
           .associate { it.second.first to (it.first to it.second.second) }
-
   // TODO replace toxiproxy with a socat container
   private val proxyContainer =
       ProxyContainer(
           ToxiproxyContainer("ghcr.io/shopify/toxiproxy:2.5.0")
-              .withImagePullPolicy(imagePullPolicy()))
+              .withImagePullPolicy(config.imagePullPolicy.toTestContainersImagePullPolicy()))
   private val runtimeContainer =
       RestateContainer(config, runtimeContainerEnvs, configSchema, copyToContainer)
-          .withImagePullPolicy(imagePullPolicy())
   private val deployedContainers: Map<String, ContainerHandle> =
       mapOf(
           RESTATE_RUNTIME to
@@ -200,13 +196,8 @@ private constructor(
                     Wait.forListeningPort().waitUntilReady(NotCachedContainerInfo(runtimeContainer))
                     waitRuntimeHealthy()
                   })) +
-          serviceContainers.map {
-            it.key to
-                ContainerHandle(it.value.second.withImagePullPolicy(PullPolicy.defaultPolicy()))
-          } +
-          additionalContainers.map {
-            it.key to ContainerHandle(it.value.withImagePullPolicy(imagePullPolicy()))
-          }
+          serviceContainers.map { it.key to ContainerHandle(it.value.second) } +
+          additionalContainers.map { it.key to ContainerHandle(it.value) }
 
   init {
     // Configure additional containers to be deployed within the same network where we deploy
@@ -217,6 +208,7 @@ private constructor(
           .withNetwork(network)
           .withNetworkAliases(containerHost)
           .withEnv(RESTATE_URI_ENV, restateUri)
+          .withImagePullPolicy(config.imagePullPolicy.toTestContainersImagePullPolicy())
           .withStartupAttempts(3) // For podman
     }
   }
@@ -453,13 +445,6 @@ private constructor(
           "Cannot find container $hostName. Most likely, there is a bug in the test code.")
     }
     return deployedContainers[hostName]!!
-  }
-
-  private fun imagePullPolicy(): ImagePullPolicy {
-    return when (config.imagePullPolicy) {
-      dev.restate.sdktesting.infra.PullPolicy.ALWAYS -> LocalAlwaysPullPolicy
-      dev.restate.sdktesting.infra.PullPolicy.CACHED -> PullPolicy.defaultPolicy()
-    }
   }
 
   override fun close() {
