@@ -46,12 +46,12 @@ class TestSuite(
           """
             .trimMargin())
 
-    // Apply additional runtime envs
-    registerGlobalConfig(getGlobalConfig().copy(additionalRuntimeEnvs = additionalEnvs))
-
     // Prepare Log4j2 configuration
     val log4j2Configuration = prepareLog4j2Config(reportDir, printToStdout)
     Configurator.reconfigure(log4j2Configuration)
+
+    // Apply additional runtime envs
+    registerGlobalConfig(getGlobalConfig().copy(additionalRuntimeEnvs = additionalEnvs))
 
     // Prepare launch request
     val request =

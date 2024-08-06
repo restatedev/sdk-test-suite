@@ -48,6 +48,11 @@ class RestateSdkTestSuite : CliktCommand() {
   override fun run() {
     // Disable log4j2 JMX, this prevents reconfiguration
     System.setProperty("log4j2.disable.jmx", "true")
+    // This is hours of debugging, don't touch it
+    // tl;dr this makes sure a single log4j2 configuration exists for the whole JVM,
+    // important to make Configurator.reconfigure work
+    System.setProperty(
+        "log4j2.contextSelector", "org.apache.logging.log4j.core.selector.BasicContextSelector")
   }
 }
 

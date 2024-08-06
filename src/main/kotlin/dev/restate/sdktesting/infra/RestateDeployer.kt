@@ -22,7 +22,6 @@ import java.nio.file.Path
 import java.util.concurrent.TimeUnit
 import org.apache.logging.log4j.LogManager
 import org.junit.jupiter.api.extension.ExtensionContext
-import org.junit.jupiter.api.fail
 import org.rnorth.ducttape.unreliables.Unreliables
 import org.testcontainers.containers.*
 import org.testcontainers.containers.wait.strategy.Wait
@@ -295,26 +294,28 @@ private constructor(
     waitRuntimeIngressHealthy()
   }
 
-  fun discoverDeployment(client: DeploymentApi, spec: ServiceSpec) {
-    Unreliables.retryUntilSuccess(5, TimeUnit.SECONDS) {
-      val url = spec.getEndpointUrl(config)
-      if (spec.skipRegistration) {
-        LOG.debug("Skipping registration for endpoint {}", url)
-        return@retryUntilSuccess
-      }
-
-      val request =
-          RegisterDeploymentRequest(
-              RegisterDeploymentRequestAnyOf().uri(url.toString()).force(false))
-      try {
-        val response = client.createDeployment(request)
-        LOG.debug("Successfully executed discovery for endpoint {}. Result: {}", url, response)
-      } catch (e: ApiException) {
-        fail(
-            "Error when discovering endpoint $url, got status code ${e.code} with body: ${e.responseBody}",
-            e)
-      }
+  private fun discoverDeployment(client: DeploymentApi, spec: ServiceSpec) {
+    val url = spec.getEndpointUrl(config)
+    if (spec.skipRegistration) {
+      LOG.debug("Skipping registration for endpoint {}", url)
+      return
     }
+    val request =
+        RegisterDeploymentRequest(RegisterDeploymentRequestAnyOf().uri(url.toString()).force(false))
+
+    val response =
+        Unreliables.retryUntilSuccess(20, TimeUnit.SECONDS) {
+          try {
+            return@retryUntilSuccess client.createDeployment(request)
+          } catch (e: ApiException) {
+            Thread.sleep(30)
+            throw IllegalStateException(
+                "Error when discovering endpoint $url, got status code ${e.code} with body: ${e.responseBody}",
+                e)
+          }
+        }
+
+    LOG.debug("Successfully executed discovery for endpoint {}. Result: {}", url, response)
   }
 
   private fun writeEnvironmentReport(testReportDir: String) {
