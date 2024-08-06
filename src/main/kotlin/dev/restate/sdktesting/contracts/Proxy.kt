@@ -54,7 +54,7 @@ data class ManyCallRequest(
     val awaitAtTheEnd: Boolean
 )
 
-@Service
+@Service(name = "Proxy")
 interface Proxy {
   // Bytes are encoded as array of numbers
   @Handler suspend fun call(context: Context, request: ProxyRequest): ByteArray

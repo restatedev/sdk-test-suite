@@ -11,7 +11,7 @@ package dev.restate.sdktesting.contracts
 import dev.restate.sdk.annotation.*
 import dev.restate.sdk.kotlin.Context
 
-@Service
+@Service(name = "UpgradeTest")
 interface UpgradeTest {
   @Handler suspend fun executeSimple(context: Context): String
 
