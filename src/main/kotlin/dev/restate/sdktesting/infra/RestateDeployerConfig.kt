@@ -23,6 +23,7 @@ data class RestateDeployerConfig(
     val serviceDeploymentConfig: Map<String, ServiceDeploymentConfig>,
     val restateContainerImage: String = "ghcr.io/restatedev/restate:main",
     val imagePullPolicy: PullPolicy = PullPolicy.ALWAYS,
+    val deployInParallel: Boolean = true,
     val additionalRuntimeEnvs: Map<String, String> = mapOf(),
     val stateDirectoryMount: String? = null,
     val localIngressPort: Int? = null,

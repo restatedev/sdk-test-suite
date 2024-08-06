@@ -8,8 +8,6 @@
 // https://github.com/restatedev/sdk-test-suite/blob/main/LICENSE
 package dev.restate.sdktesting.infra
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.dataformat.toml.TomlFactory
 import dev.restate.admin.api.DeploymentApi
 import dev.restate.admin.client.ApiClient
 import dev.restate.admin.client.ApiException
@@ -22,6 +20,8 @@ import java.lang.reflect.Method
 import java.net.URI
 import java.net.http.HttpClient
 import java.nio.file.Path
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.Executors
 import org.apache.logging.log4j.LogManager
 import org.junit.jupiter.api.extension.ExtensionContext
 import org.junit.jupiter.api.fail
@@ -39,9 +39,9 @@ private constructor(
     private val config: RestateDeployerConfig,
     private val serviceSpecs: List<ServiceSpec>,
     private val additionalContainers: Map<String, GenericContainer<*>>,
-    private val runtimeContainerEnvs: Map<String, String>,
-    private val copyToContainer: List<Pair<String, Transferable>>,
-    private val configSchema: RestateConfigSchema?
+    runtimeContainerEnvs: Map<String, String>,
+    copyToContainer: List<Pair<String, Transferable>>,
+    configSchema: RestateConfigSchema?
 ) : AutoCloseable, ExtensionContext.Store.CloseableResource {
 
   // Perhaps at some point we could autogenerate these from the openapi doc and also remove the need
@@ -67,11 +67,12 @@ private constructor(
   }
 
   companion object {
-    private const val RESTATE_URI_ENV = "RESTATE_URI"
+    internal const val RESTATE_URI_ENV = "RESTATE_URI"
 
     private val LOG = LogManager.getLogger(RestateDeployer::class.java)
 
     private val apiClient = ApiClient()
+    private val startContainersThreadPoolExecutor = Executors.newCachedThreadPool()
 
     fun builder(): Builder {
       return Builder()
@@ -79,16 +80,6 @@ private constructor(
 
     fun reportDirectory(baseReportDir: Path, testClass: Class<*>): String {
       val dir = baseReportDir.resolve(testClass.canonicalName).toAbsolutePath().toString()
-      File(dir).mkdirs()
-      return dir
-    }
-
-    fun reportDirectory(baseReportDir: Path, testClass: Class<*>, testMethod: Method): String {
-      val dir =
-          baseReportDir
-              .resolve("${testClass.canonicalName}_${testMethod.name}")
-              .toAbsolutePath()
-              .toString()
       File(dir).mkdirs()
       return dir
     }
@@ -167,10 +158,22 @@ private constructor(
     }
   }
 
+  // Infer RESTATE_URI
+  private val ingressPort =
+      URI(
+              "http",
+              configSchema?.ingress?.bindAddress ?: IngressOptions().bindAddress,
+              "/",
+              null,
+              null)
+          .port
+  private val restateUri = "http://$RESTATE_RUNTIME:$ingressPort/"
+
+  private val network = Network.newNetwork()
   private val serviceContainers =
       serviceSpecs
           .mapNotNull {
-            val hostNameContainer = it.toHostNameContainer(config)
+            val hostNameContainer = it.toHostNameContainer(config, network, restateUri)
             if (hostNameContainer != null) {
               it to hostNameContainer
             } else {
@@ -178,14 +181,15 @@ private constructor(
             }
           }
           .associate { it.second.first to (it.first to it.second.second) }
-  private val network = Network.newNetwork()
 
   // TODO replace toxiproxy with a socat container
   private val proxyContainer =
       ProxyContainer(
           ToxiproxyContainer("ghcr.io/shopify/toxiproxy:2.5.0")
               .withImagePullPolicy(imagePullPolicy()))
-  private val runtimeContainer = RestateContainer(config).withImagePullPolicy(imagePullPolicy())
+  private val runtimeContainer =
+      RestateContainer(config, runtimeContainerEnvs, configSchema, copyToContainer)
+          .withImagePullPolicy(imagePullPolicy())
   private val deployedContainers: Map<String, ContainerHandle> =
       mapOf(
           RESTATE_RUNTIME to
@@ -204,22 +208,46 @@ private constructor(
             it.key to ContainerHandle(it.value.withImagePullPolicy(imagePullPolicy()))
           }
 
-  fun deployAll(testReportDir: String) {
-    // Infer RESTATE_URI
-    val ingressPort =
-        URI(
-                "http",
-                configSchema?.ingress?.bindAddress ?: IngressOptions().bindAddress,
-                "/",
-                null,
-                null)
-            .port
-    val restateUri = "http://$RESTATE_RUNTIME:$ingressPort/"
+  init {
+    // Configure additional containers to be deployed within the same network where we deploy
+    // everything else
+    additionalContainers.forEach { (containerHost, container) ->
+      container.networkAliases = ArrayList()
+      container
+          .withNetwork(network)
+          .withNetworkAliases(containerHost)
+          .withEnv(RESTATE_URI_ENV, restateUri)
+          .withStartupAttempts(3) // For podman
+    }
+  }
 
-    deployServices(testReportDir, restateUri)
-    deployAdditionalContainers(testReportDir, restateUri)
-    deployRuntime(testReportDir)
-    deployProxy(testReportDir)
+  fun deployAll(testReportDir: String) {
+    LOG.debug("Writing container logs to {}", testReportDir)
+
+    // This generates the network down the hood
+    network.id
+
+    // Configure logging
+    configureLogger(testReportDir)
+
+    if (config.deployInParallel) {
+      // Deploy all containers in parallel
+      val startFutures =
+          deployServicesConcurrently() +
+              deployAdditionalContainersConcurrently() +
+              listOf(deployRuntime()) +
+              listOf(deployProxy(testReportDir))
+      CompletableFuture.allOf(*startFutures.toTypedArray()).join()
+    } else {
+      // Deploy sequentially
+      deployServicesSequentially()
+      deployAdditionalContainersSequentially()
+      deployRuntime().join()
+      deployProxy(testReportDir).join()
+    }
+
+    // Configure proxy
+    configureProxy(testReportDir)
 
     // Let's execute service discovery to register the services
     waitRuntimeAdminHealthy()
@@ -237,17 +265,33 @@ private constructor(
     waitRuntimeIngressHealthy()
   }
 
-  private fun deployServices(testReportDir: String, restateURI: String) {
-    // Deploy services
-    serviceContainers.forEach { (serviceName, serviceContainer) ->
-      serviceContainer.second.networkAliases = ArrayList()
-      serviceContainer.second
-          .withNetwork(network)
-          .withNetworkAliases(serviceName)
-          .withEnv(RESTATE_URI_ENV, restateURI)
-          .withLogConsumer(ContainerLogger(testReportDir, serviceName))
-          .withStartupAttempts(3) // For podman
-          .start()
+  private fun configureLogger(testReportDir: String) {
+    serviceContainers.forEach { (_, serviceContainer) ->
+      serviceContainer.second.configureLogger(testReportDir)
+    }
+    additionalContainers.forEach { (hostname, container) ->
+      container.withLogConsumer(ContainerLogger(testReportDir, hostname))
+    }
+    runtimeContainer.configureLogger(testReportDir)
+  }
+
+  private fun deployServicesConcurrently(): List<CompletableFuture<*>> {
+    return serviceContainers.map { (serviceName, serviceContainer) ->
+      CompletableFuture.runAsync(
+          {
+            serviceContainer.second.start()
+            LOG.debug(
+                "Started service container {} with endpoint {}",
+                serviceName,
+                serviceContainer.first.getEndpointUrl(config))
+          },
+          startContainersThreadPoolExecutor)
+    }
+  }
+
+  private fun deployServicesSequentially() {
+    return serviceContainers.forEach { (serviceName, serviceContainer) ->
+      serviceContainer.second.start()
       LOG.debug(
           "Started service container {} with endpoint {}",
           serviceName,
@@ -255,71 +299,42 @@ private constructor(
     }
   }
 
-  private fun deployAdditionalContainers(testReportDir: String, restateURI: String) {
-    // Deploy additional containers
-    additionalContainers.forEach { (containerHost, container) ->
-      container.networkAliases = ArrayList()
-      container
-          .withNetwork(network)
-          .withNetworkAliases(containerHost)
-          .withEnv(RESTATE_URI_ENV, restateURI)
-          .withLogConsumer(ContainerLogger(testReportDir, containerHost))
-          .withStartupAttempts(3) // For podman
-          .start()
+  private fun deployAdditionalContainersConcurrently(): List<CompletableFuture<*>> {
+    return additionalContainers.map { (containerHost, container) ->
+      CompletableFuture.runAsync(
+          {
+            container.start()
+            LOG.debug(
+                "Started container {} with image {}", containerHost, container.dockerImageName)
+          },
+          startContainersThreadPoolExecutor)
+    }
+  }
+
+  private fun deployAdditionalContainersSequentially() {
+    return additionalContainers.forEach { (containerHost, container) ->
+      container.start()
       LOG.debug("Started container {} with image {}", containerHost, container.dockerImageName)
     }
   }
 
-  private fun deployRuntime(testReportDir: String) {
-    // Generate test report directory
-    LOG.debug("Writing container logs to {}", testReportDir)
-    LOG.debug("Starting runtime container '{}'", config.restateContainerImage)
-
-    // Configure runtime container
-    runtimeContainer
-        .dependsOn(serviceContainers.values.map { it.second })
-        .dependsOn(additionalContainers.values)
-        .withEnv(runtimeContainerEnvs)
-        // These envs should not be overriden by additionalEnv
-        .withEnv("RESTATE_ADMIN__BIND_ADDRESS", "0.0.0.0:$RUNTIME_META_ENDPOINT_PORT")
-        .withEnv("RESTATE_INGRESS__BIND_ADDRESS", "0.0.0.0:$RUNTIME_INGRESS_ENDPOINT_PORT")
-        .withNetwork(network)
-        .withNetworkAliases(RESTATE_RUNTIME)
-        .withLogConsumer(ContainerLogger(testReportDir, "restate-runtime"))
-        .withStartupAttempts(3) // For podman
-
-    if (config.stateDirectoryMount != null) {
-      val stateDir = File(config.stateDirectoryMount)
-      stateDir.mkdirs()
-
-      LOG.debug("Mounting state directory to '{}'", stateDir.toPath())
-      runtimeContainer.addFileSystemBind(
-          stateDir.toString(), "/state", BindMode.READ_WRITE, SelinuxContext.SINGLE)
-    }
-    runtimeContainer.withEnv("RESTATE_BASE_DIR", "/state")
-
-    if (this.configSchema != null) {
-      val tomlMapper = ObjectMapper(TomlFactory())
-      runtimeContainer.withCopyToContainer(
-          Transferable.of(tomlMapper.writeValueAsBytes(this.configSchema)), "/config.toml")
-      runtimeContainer.withEnv("RESTATE_CONFIG", "/config.toml")
-    }
-
-    for (file in this.copyToContainer) {
-      runtimeContainer.withCopyToContainer(file.second, file.first)
-    }
-
-    runtimeContainer.start()
-    LOG.debug("Restate runtime started. Container id {}", runtimeContainer.containerId)
+  private fun deployRuntime(): CompletableFuture<*> {
+    return CompletableFuture.runAsync(
+        {
+          runtimeContainer.start()
+          LOG.debug("Restate runtime started. Container id {}", runtimeContainer.containerId)
+        },
+        startContainersThreadPoolExecutor)
   }
 
-  private fun deployProxy(testReportDir: String) {
+  private fun deployProxy(testReportDir: String): CompletableFuture<*> {
+    return CompletableFuture.runAsync(
+        { proxyContainer.start(network, testReportDir) }, startContainersThreadPoolExecutor)
+  }
+
+  private fun configureProxy(testReportDir: String) {
     // We use an external proxy to access from the test code to the restate container in order to
     // retain the tcp port binding across restarts.
-
-    // Configure toxiproxy and start
-    proxyContainer.start(network, testReportDir)
-
     // Proxy runtime ports
     val adminPort = proxyContainer.mapPort(RESTATE_RUNTIME, RUNTIME_META_ENDPOINT_PORT)
     val ingressPort = proxyContainer.mapPort(RESTATE_RUNTIME, RUNTIME_INGRESS_ENDPOINT_PORT)

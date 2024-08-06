@@ -123,7 +123,8 @@ Run test suite, executing the service as container.
 
     val restateDeployerConfig =
         RestateDeployerConfig(
-            mapOf(ServiceSpec.DEFAULT_SERVICE_NAME to ContainerServiceDeploymentConfig(imageName)))
+            mapOf(ServiceSpec.DEFAULT_SERVICE_NAME to ContainerServiceDeploymentConfig(imageName)),
+            deployInParallel = parallel)
 
     // Register global config of the deployer
     registerGlobalConfig(testRunnerOptions.applyToDeployerConfig(restateDeployerConfig))
