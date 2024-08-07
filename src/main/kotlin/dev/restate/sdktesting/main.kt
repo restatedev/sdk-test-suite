@@ -159,6 +159,8 @@ Run test suite, executing the service as container.
               parallel)
 
       reports.add(report)
+      // No need to wait the end of the run for this
+      report.printFailuresToFiles(testRunnerOptions.reportDir)
       val failures = report.failedTests
       if (failures.isNotEmpty() || exclusions.isNotEmpty()) {
         newExclusions[testSuite.name] =
@@ -208,7 +210,7 @@ Run test suite, executing the service as container.
             .trimIndent())
 
     for (report in reports) {
-      report.printFailuresTo(terminal)
+      report.printFailuresToTerminal(terminal)
     }
 
     if (newFailures) {
@@ -260,7 +262,8 @@ Run test suite, without executing the service inside a container.
 
     val report = testSuite.runTests(terminal, testRunnerOptions.reportDir, testFilters, true, false)
 
-    report.printFailuresTo(terminal)
+    report.printFailuresToTerminal(terminal)
+    report.printFailuresToFiles(testRunnerOptions.reportDir)
 
     if (report.failedTests.isNotEmpty()) {
       // Exit

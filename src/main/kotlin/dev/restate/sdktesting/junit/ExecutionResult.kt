@@ -13,10 +13,15 @@ import com.github.ajalt.mordant.rendering.TextColors.red
 import com.github.ajalt.mordant.rendering.TextStyles.bold
 import com.github.ajalt.mordant.terminal.Terminal
 import java.io.PrintWriter
-import java.lang.IllegalStateException
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.StandardOpenOption
 import java.util.*
+import kotlin.jvm.optionals.getOrNull
 import kotlin.math.min
 import kotlin.time.TimeSource
+import org.junit.platform.engine.support.descriptor.ClassSource
+import org.junit.platform.engine.support.descriptor.MethodSource
 import org.junit.platform.launcher.TestIdentifier
 import org.junit.platform.launcher.TestPlan
 
@@ -37,8 +42,9 @@ class ExecutionResult(
 
   companion object {
     private const val TAB = "  "
-    private const val DOUBLE_TAB = TAB + TAB
-    private const val DEFAULT_MAX_STACKTRACE_LINES = 15
+    private const val DEFAULT_MAX_STACKTRACE_LINES_TERMINAL = 15
+    private const val DEFAULT_MAX_STACKTRACE_LINES_FILE = 1000
+    private const val TEST_EXCEPTIONS_FILE = "test-exceptions.log"
 
     private const val CAUSED_BY = "Caused by: "
     private const val SUPPRESSED = "Suppressed: "
@@ -86,32 +92,14 @@ class ExecutionResult(
             .trimIndent())
   }
 
-  fun printFailuresTo(terminal: Terminal, maxStackTraceLines: Int = DEFAULT_MAX_STACKTRACE_LINES) {
-
+  fun printFailuresToTerminal(
+      terminal: Terminal,
+      maxStackTraceLines: Int = DEFAULT_MAX_STACKTRACE_LINES_TERMINAL
+  ) {
     val classesFailures =
         this.classesResults.toList().filter { it.second is Aborted || it.second is Failed }
     val testsFailures =
         this.testResults.toList().filter { it.second is Aborted || it.second is Failed }
-
-    fun printFailures(failureList: List<Pair<TestIdentifier, TestResult>>) {
-      for (failure in failureList) {
-        terminal.println("$TAB${describeTestIdentifier(testSuite, testPlan, failure.first)}")
-        describeTestIdentifierSource(terminal, failure.first)
-        when (failure.second) {
-          Aborted -> terminal.println("${DOUBLE_TAB}=> ABORTED")
-          is Failed -> {
-            val throwable = (failure.second as Failed).throwable
-            if (throwable == null) {
-              terminal.println("${DOUBLE_TAB}=> UNKNOWN FAILURE")
-            } else {
-              terminal.println("$DOUBLE_TAB=> $throwable")
-              printStackTrace(PrintWriter(System.out), throwable, maxStackTraceLines)
-            }
-          }
-          Succeeded -> throw IllegalStateException()
-        }
-      }
-    }
 
     if (classesFailures.isEmpty() && testsFailures.isEmpty()) {
       return
@@ -119,19 +107,79 @@ class ExecutionResult(
 
     terminal.println((red + bold)("== '$testSuite' FAILURES"))
 
+    val writer = PrintWriter(System.out)
     if (classesFailures.isNotEmpty()) {
       terminal.println("Classes initialization failures ${red(classesFailures.size.toString())}:")
-      printFailures(classesFailures)
+      for (failure in classesFailures) {
+        printFailure(writer, failure.first, failure.second, maxStackTraceLines)
+      }
     }
-
     if (testsFailures.isNotEmpty()) {
       terminal.println("Test failures ${red(testsFailures.size.toString())}:")
-      printFailures(testsFailures)
+      for (failure in testsFailures) {
+        printFailure(writer, failure.first, failure.second, maxStackTraceLines)
+      }
     }
   }
 
-  private fun describeTestIdentifierSource(terminal: Terminal, testIdentifier: TestIdentifier) {
-    testIdentifier.source.ifPresent { terminal.println("${DOUBLE_TAB}$it") }
+  fun printFailuresToFiles(
+      baseReportDir: Path,
+      maxStackTraceLines: Int = DEFAULT_MAX_STACKTRACE_LINES_FILE
+  ) {
+    val reportDir = baseReportDir.resolve(testSuite)
+
+    val classesFailures =
+        this.classesResults.toList().filter { it.second is Aborted || it.second is Failed }
+    val testsFailures =
+        this.testResults.toList().filter { it.second is Aborted || it.second is Failed }
+
+    for (f in classesFailures) {
+      val clzSimpleName = classSimpleName((f.first.source.getOrNull() as ClassSource).className)
+      Files.newBufferedWriter(
+              reportDir.resolve(clzSimpleName).resolve(TEST_EXCEPTIONS_FILE),
+              StandardOpenOption.WRITE,
+              StandardOpenOption.CREATE,
+              StandardOpenOption.APPEND)
+          .use { printFailure(PrintWriter(it), f.first, f.second, maxStackTraceLines) }
+    }
+
+    for (f in testsFailures) {
+      // Resolve class name first
+      val clzSimpleName = classSimpleName((f.first.source.getOrNull() as MethodSource).className)
+      Files.newBufferedWriter(
+              reportDir.resolve(clzSimpleName).resolve(TEST_EXCEPTIONS_FILE),
+              StandardOpenOption.WRITE,
+              StandardOpenOption.CREATE,
+              StandardOpenOption.APPEND)
+          .use { printFailure(PrintWriter(it), f.first, f.second, maxStackTraceLines) }
+    }
+  }
+
+  private fun printFailure(
+      printWriter: PrintWriter,
+      testIdentifier: TestIdentifier,
+      result: TestResult,
+      maxStackTraceLines: Int
+  ) {
+    printWriter.println(describeTestIdentifier(testSuite, testPlan, testIdentifier))
+    describeTestIdentifierSource(printWriter, testIdentifier)
+    when (result) {
+      Aborted -> printWriter.println("${TAB}=> ABORTED")
+      is Failed -> {
+        val throwable = result.throwable
+        if (throwable == null) {
+          printWriter.println("${TAB}=> UNKNOWN FAILURE")
+        } else {
+          printWriter.println("$TAB=> $throwable")
+          printStackTrace(printWriter, throwable, maxStackTraceLines)
+        }
+      }
+      Succeeded -> {}
+    }
+  }
+
+  private fun describeTestIdentifierSource(writer: PrintWriter, testIdentifier: TestIdentifier) {
+    testIdentifier.source.ifPresent { writer.println("${TAB}$it") }
   }
 
   private fun printStackTrace(writer: PrintWriter, throwable: Throwable, max: Int) {
@@ -140,7 +188,7 @@ class ExecutionResult(
         (throwable.suppressed != null && throwable.suppressed.size > 0)) {
       max = max / 2
     }
-    printStackTrace(writer, arrayOf(), throwable, "", DOUBLE_TAB + " ", HashSet(), max)
+    printStackTrace(writer, arrayOf(), throwable, "", TAB + " ", HashSet(), max)
     writer.flush()
   }
 

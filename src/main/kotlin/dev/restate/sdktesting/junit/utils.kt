@@ -24,3 +24,7 @@ fun describeTestIdentifier(
       describeTestIdentifier(testSuite, testPlan, testPlan.getParent(identifier).getOrNull())
   return "$parent => ${identifier.displayName}"
 }
+
+fun classSimpleName(clz: String): String {
+  return clz.substringAfterLast('.')
+}
