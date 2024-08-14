@@ -51,10 +51,11 @@ class TestSuite(
     Configurator.reconfigure(log4j2Configuration)
 
     // Apply additional runtime envs
-    registerGlobalConfig(getGlobalConfig().copy(additionalRuntimeEnvs = additionalEnvs))
+    val restateDeployerConfig = getGlobalConfig().copy(additionalRuntimeEnvs = additionalEnvs)
+    registerGlobalConfig(restateDeployerConfig)
 
     // Prepare launch request
-    val request =
+    var builder =
         LauncherDiscoveryRequestBuilder.request()
             .selectors(DiscoverySelectors.selectPackage("dev.restate.sdktesting.tests"))
             .filters(TagFilter.includeTags(junitIncludeTags))
@@ -68,7 +69,15 @@ class TestSuite(
             .configurationParameter(
                 "junit.jupiter.execution.parallel.mode.classes.default",
                 if (parallel) "concurrent" else "same_thread")
-            .build()
+
+    // Disable lifecycle timeout
+    if (restateDeployerConfig.retainAfterEnd) {
+      builder =
+          builder.configurationParameter(
+              "junit.jupiter.execution.timeout.lifecycle.method.default", "360m")
+    }
+
+    val request = builder.build()
 
     // Configure listeners
     val errWriter = PrintWriter(System.err)
@@ -136,7 +145,6 @@ class TestSuite(
 
       rootLogger.add(builder.newAppenderRef("stdout"))
       restateLogger.add(builder.newAppenderRef("stdout"))
-      testContainersLogger.add(builder.newAppenderRef("stdout"))
     }
 
     builder.add(fileAppender)

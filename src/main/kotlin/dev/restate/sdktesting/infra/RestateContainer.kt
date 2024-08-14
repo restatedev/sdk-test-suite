@@ -66,9 +66,11 @@ class RestateContainer(
     }
 
     if (config.localAdminPort != null) {
+      LOG.info("Going to expose Admin port on localhost:{}", config.localAdminPort)
       super.addFixedExposedPort(config.localAdminPort, RUNTIME_META_ENDPOINT_PORT)
     }
     if (config.localIngressPort != null) {
+      LOG.info("Going to expose Admin port on localhost:{}", config.localIngressPort)
       super.addFixedExposedPort(config.localIngressPort, RUNTIME_INGRESS_ENDPOINT_PORT)
     }
   }

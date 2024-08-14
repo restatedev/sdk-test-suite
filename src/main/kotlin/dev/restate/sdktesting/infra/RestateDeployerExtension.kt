@@ -17,8 +17,8 @@ class RestateDeployerExtension(private val deployerFactory: RestateDeployer.Buil
     val builder = RestateDeployer.builder()
     deployerFactory.invoke(builder)
     val deployer = builder.build()
+    context.getStore(NAMESPACE).put(DEPLOYER_KEY, deployer)
     deployer.deployAll(
         RestateDeployer.reportDirectory(getReportPath(context), context.requiredTestClass))
-    context.getStore(NAMESPACE).put(DEPLOYER_KEY, deployer)
   }
 }

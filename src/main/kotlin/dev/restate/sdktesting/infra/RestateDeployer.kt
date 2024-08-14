@@ -19,6 +19,7 @@ import java.io.File
 import java.net.URI
 import java.net.http.HttpClient
 import java.nio.file.Path
+import java.util.*
 import java.util.concurrent.TimeUnit
 import org.apache.logging.log4j.LogManager
 import org.junit.jupiter.api.extension.ExtensionContext
@@ -104,7 +105,6 @@ private constructor(
           mapOf(
               "restate_invoker" to "trace",
               "restate_ingress_kafka" to "trace",
-              "restate_worker::partition::services::non_deterministic::remote_context" to "trace",
               "restate" to "debug")
       val defaultLog =
           (listOf("info") + defaultLogFilters.map { "${it.key}=${it.value}" }).joinToString(
@@ -142,7 +142,7 @@ private constructor(
           .port
   private val restateUri = "http://$RESTATE_RUNTIME:$ingressPort/"
 
-  private val network = Network.newNetwork()
+  private val network = Network.newNetwork()!!
   private val serviceContainers =
       serviceSpecs
           .mapNotNull {
@@ -315,7 +315,14 @@ private constructor(
           }
         }
 
-    LOG.debug("Successfully executed discovery for endpoint {}. Result: {}", url, response)
+    LOG.debug(
+        """
+      Successfully executed discovery for endpoint {}, registered with id {}. Discovered services: {}
+    """
+            .trimIndent(),
+        url,
+        response.id,
+        response.services.map { it.name })
   }
 
   private fun writeEnvironmentReport(testReportDir: String) {
@@ -359,11 +366,16 @@ private constructor(
   }
 
   private fun teardownAll() {
+    if (config.retainAfterEnd) {
+      LOG.info("Press a button to cleanup the test environment. Deployed network: {}", network.id)
+      System.`in`.read()
+      return
+    }
     teardownRuntime()
     teardownAdditionalContainers()
     teardownServices()
     teardownProxy()
-    network!!.close()
+    network.close()
   }
 
   internal fun getContainerPort(hostName: String, port: Int): Int {

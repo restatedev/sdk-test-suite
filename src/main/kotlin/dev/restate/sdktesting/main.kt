@@ -19,6 +19,7 @@ import com.github.ajalt.clikt.parameters.groups.cooccurring
 import com.github.ajalt.clikt.parameters.groups.provideDelegate
 import com.github.ajalt.clikt.parameters.options.*
 import com.github.ajalt.clikt.parameters.types.enum
+import com.github.ajalt.clikt.parameters.types.int
 import com.github.ajalt.clikt.parameters.types.path
 import com.github.ajalt.mordant.rendering.TextColors.green
 import com.github.ajalt.mordant.rendering.TextColors.red
@@ -119,7 +120,8 @@ Run test suite, executing the service as container.
     val restateDeployerConfig =
         RestateDeployerConfig(
             mapOf(ServiceSpec.DEFAULT_SERVICE_NAME to ContainerServiceDeploymentConfig(imageName)),
-            deployInParallel = parallel)
+            deployInParallel = parallel,
+        )
 
     // Register global config of the deployer
     registerGlobalConfig(testRunnerOptions.applyToDeployerConfig(restateDeployerConfig))
@@ -243,6 +245,17 @@ Run test suite, without executing the service inside a container.
           .multiple(required = true)
           .help(
               "Local containers name=ports. Example: '9080' (for default-service container), 'otherContainer=9081'")
+  val retainAfterEnd by
+      option()
+          .flag("--dont-retain-after-end", default = false)
+          .help(
+              "Retain the created docker network after the end of the test. You MUST manually clean it up afterwards!")
+  val mountStateDirectory by
+      option()
+          .help(
+              "Mount the given state directory as restate data when starting the runtime container")
+  val localIngressPort by option().int().help("Ingress port to bind the runtime container")
+  val localAdminPort by option().int().help("Ingress port to bind the admin container")
 
   override fun run() {
     val terminal = Terminal()
@@ -252,8 +265,18 @@ Run test suite, without executing the service inside a container.
         RestateDeployerConfig(
             localContainers.associate {
               it.first to LocalForwardServiceDeploymentConfig(it.second)
-            })
+            },
+            localAdminPort = this.localAdminPort,
+            localIngressPort = this.localIngressPort,
+            stateDirectoryMount = this.mountStateDirectory,
+            retainAfterEnd = this.retainAfterEnd)
     registerGlobalConfig(testRunnerOptions.applyToDeployerConfig(restateDeployerConfig))
+
+    if (restateDeployerConfig.retainAfterEnd) {
+      // Disable ryuk, as it will otherwise cleanup the network after the JVM goes away.
+      //      System.getenv().put("TESTCONTAINERS_RYUK_DISABLED", "true")
+
+    }
 
     // Resolve test configurations
     val testSuite = TestSuites.resolveSuites(testSuite)[0]

@@ -27,7 +27,8 @@ data class RestateDeployerConfig(
     val additionalRuntimeEnvs: Map<String, String> = mapOf(),
     val stateDirectoryMount: String? = null,
     val localIngressPort: Int? = null,
-    val localAdminPort: Int? = null
+    val localAdminPort: Int? = null,
+    val retainAfterEnd: Boolean = false
 ) {
   init {
     check(serviceDeploymentConfig.containsKey(ServiceSpec.DEFAULT_SERVICE_NAME)) {
