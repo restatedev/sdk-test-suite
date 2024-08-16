@@ -30,6 +30,20 @@ data object TimeoutResponse : CreateAwakeableAndAwaitItResponse
 @SerialName("result")
 data class AwakeableResultResponse(val value: String) : CreateAwakeableAndAwaitItResponse
 
+@Serializable data class InterpretRequest(val listName: String, val commands: List<Command>)
+
+@Serializable sealed interface Command
+// This is serialized as `{"type": "createAwakeableAndAwaitIt", ...}`
+@Serializable
+@SerialName("createAwakeableAndAwaitIt")
+data class CreateAwakeableAndAwaitIt(val awakeableKey: String) : Command
+
+// This is serialized as `{"type": "getEnvVariable", ...}`
+// Reading an environment variable should be done within a side effect!
+@Serializable
+@SerialName("getEnvVariable")
+data class GetEnvVariable(val envName: String) : Command
+
 /** Collection of various utilities/corner cases scenarios used by tests */
 @Service(name = "TestUtilsService")
 interface TestUtilsService {
@@ -60,4 +74,14 @@ interface TestUtilsService {
    * This is used to verify acks will suspend when using the always suspend test-suite
    */
   @Handler suspend fun countExecutedSideEffects(context: Context, increments: Int): Int
+
+  /** Read an environment variable */
+  @Handler suspend fun getEnvVariable(context: Context, env: String): String
+
+  /**
+   * This handler should iterate through the list of commands and execute them.
+   *
+   * For each command, the output should be appended to the given list name.
+   */
+  @Handler suspend fun interpretCommands(context: Context, req: InterpretRequest)
 }
