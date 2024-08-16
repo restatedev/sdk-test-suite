@@ -38,6 +38,8 @@ To change the runtime container image, use `--restate-container-image=<RUNTIME_C
 
 By default, the tool will always pull images, unless they have the repository prefix `restate.local` or `localhost`. To always try to use the local cache, use `--image-pull-policy=CACHED`.
 
+All the environment variables prefixed with `RUST_` and `RESTATE_` will be propagated to every deployed runtime container. 
+
 ### Exclusions
 
 Some SDKs might not implement all the features. For this purpose, the tool allows to configure the excluded test classes in an ad-hoc file. To run with the exclusions file:
