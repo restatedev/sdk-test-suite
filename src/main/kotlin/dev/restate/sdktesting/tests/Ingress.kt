@@ -47,6 +47,8 @@ class Ingress {
                   CounterDefinitions.SERVICE_NAME,
                   ProxyDefinitions.SERVICE_NAME,
                   TestUtilsServiceDefinitions.SERVICE_NAME))
+      // We need the short cleanup interval b/c of the tests with the idempotent invoke.
+      withEnv("RESTATE_WORKER__CLEANUP_INTERVAL", "1s")
     }
   }
 
