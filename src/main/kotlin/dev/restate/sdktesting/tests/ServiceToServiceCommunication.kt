@@ -14,6 +14,7 @@ import dev.restate.sdktesting.infra.InjectClient
 import dev.restate.sdktesting.infra.RestateDeployerExtension
 import dev.restate.sdktesting.infra.ServiceSpec
 import java.util.UUID
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.encodeToString
@@ -23,6 +24,7 @@ import org.awaitility.kotlin.await
 import org.awaitility.kotlin.untilAsserted
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.Timeout
 import org.junit.jupiter.api.extension.RegisterExtension
 import org.junit.jupiter.api.parallel.Execution
 import org.junit.jupiter.api.parallel.ExecutionMode
@@ -73,5 +75,27 @@ class ServiceToServiceCommunication {
             Json.encodeToString(1).encodeToByteArray()))
 
     await untilAsserted { runBlocking { assertThat(counterClient.get()).isEqualTo(1L) } }
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  @Timeout(value = 20, unit = TimeUnit.SECONDS)
+  @Tag("timers")
+  fun oneWayCallWithDelay(@InjectClient ingressClient: Client) = runTest {
+    val counterId = UUID.randomUUID().toString()
+    val proxyClient = ProxyClient.fromClient(ingressClient)
+    val counterClient = CounterClient.fromClient(ingressClient, counterId)
+
+    for (i in 1..10) {
+      proxyClient.oneWayCall(
+          ProxyRequest(
+              CounterDefinitions.SERVICE_NAME,
+              counterId,
+              "add",
+              Json.encodeToString(1).encodeToByteArray(),
+              100))
+    }
+
+    await untilAsserted { runBlocking { assertThat(counterClient.get()).isEqualTo(10L) } }
   }
 }
