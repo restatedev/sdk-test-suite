@@ -48,6 +48,10 @@ class NonDeterminismErrors {
               "setDifferentKey"])
   @Execution(ExecutionMode.CONCURRENT)
   fun method(handlerName: String, @InjectClient ingressClient: Client) = runTest {
+    // Increment the count first, this makes sure that the counter service is there.
+    val c = CounterClient.fromClient(ingressClient, handlerName)
+    c.add(1)
+
     assertThatThrownBy {
           ingressClient.call(
               Target.virtualObject(
@@ -59,6 +63,6 @@ class NonDeterminismErrors {
         .isNotNull()
 
     // Assert the counter was not incremented
-    assertThat(CounterClient.fromClient(ingressClient, handlerName).get()).isZero()
+    assertThat(CounterClient.fromClient(ingressClient, handlerName).get()).isEqualTo(1)
   }
 }
