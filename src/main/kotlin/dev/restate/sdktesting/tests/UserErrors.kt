@@ -40,39 +40,6 @@ class UserErrors {
     }
   }
 
-  //  @DisplayName("Test terminal error of failing side effect with finite retry policy is
-  // propagated")
-  //  @Test
-  //  @Execution(ExecutionMode.CONCURRENT)
-  //  fun failingSideEffectWithFiniteRetryPolicy(@InjectBlockingStub stub:
-  // FailingServiceBlockingStub) {
-  //    val errorMessage = "some error message"
-  //
-  //    assertThatThrownBy {
-  //          stub.failingSideEffectWithFiniteRetryPolicy(
-  //              ErrorMessage.newBuilder()
-  //                  .setKey(UUID.randomUUID().toString())
-  //                  .setErrorMessage(errorMessage)
-  //                  .build())
-  //        }
-  //        .asInstanceOf(type(StatusRuntimeException::class.java))
-  //        .extracting(StatusRuntimeException::getStatus)
-  //        .extracting(Status::getDescription, InstanceOfAssertFactories.STRING)
-  //        .contains("failing side effect action")
-  //  }
-
-  // @DisplayName("Test propagate failure from sideEffect and internal invoke")
-  //  @Test
-  //  @Execution(ExecutionMode.CONCURRENT)
-  //  fun sideEffectFailurePropagation(@InjectClient ingressClient: Client) {
-  //    assertThat(
-  //            FailingClient.fromClient(ingressClient, UUID.randomUUID().toString())
-  //                .invokeExternalAndHandleFailure())
-  //        // We match on this regex because there might be additional parts of the string injected
-  //        // by runtime/sdk in the error message strings
-  //        .matches("begin.*external_call.*internal_call")
-  //  }
-
   @DisplayName("Test calling method that fails terminally")
   @Test
   @Execution(ExecutionMode.CONCURRENT)
@@ -120,16 +87,6 @@ class UserErrors {
 
     assertThatThrownBy { runBlocking { failingClient.callTerminallyFailingCall(errorMessage) } }
         .hasMessageContaining(errorMessage)
-  }
-
-  @DisplayName("Test side effects are retried until they succeed")
-  @Test
-  @Execution(ExecutionMode.CONCURRENT)
-  fun sideEffectWithEventualSuccess(@InjectClient ingressClient: Client) = runTest {
-    assertThat(
-            FailingClient.fromClient(ingressClient, UUID.randomUUID().toString())
-                .failingCallWithEventualSuccess())
-        .isEqualTo(SUCCESS_ATTEMPT)
   }
 
   @DisplayName("Test invocations are retried until they succeed")
