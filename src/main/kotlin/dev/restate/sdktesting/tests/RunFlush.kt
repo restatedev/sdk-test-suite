@@ -14,6 +14,7 @@ import dev.restate.sdktesting.contracts.TestUtilsServiceDefinitions
 import dev.restate.sdktesting.infra.InjectClient
 import dev.restate.sdktesting.infra.RestateDeployerExtension
 import dev.restate.sdktesting.infra.ServiceSpec
+import java.util.*
 import kotlinx.coroutines.test.runTest
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
@@ -24,7 +25,7 @@ import org.junit.jupiter.api.parallel.Execution
 import org.junit.jupiter.api.parallel.ExecutionMode
 
 @Tag("only-always-suspending")
-class SideEffect {
+class RunFlush {
   companion object {
     @RegisterExtension
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
@@ -33,10 +34,10 @@ class SideEffect {
     }
   }
 
-  @DisplayName("Side effect should wait on acknowledgements")
+  @DisplayName("Run should wait on acknowledgements")
   @Test
   @Execution(ExecutionMode.CONCURRENT)
-  fun sideEffectFlush(@InjectClient ingressClient: Client) = runTest {
+  fun flush(@InjectClient ingressClient: Client) = runTest {
     assertThat(TestUtilsServiceClient.fromClient(ingressClient).countExecutedSideEffects(3))
         .isEqualTo(0)
   }
