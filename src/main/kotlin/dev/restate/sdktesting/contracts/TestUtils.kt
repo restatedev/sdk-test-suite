@@ -78,6 +78,9 @@ interface TestUtilsService {
    */
   @Handler suspend fun countExecutedSideEffects(context: Context, increments: Int): Int
 
+  /** Cancel invocation using the context. */
+  @Handler suspend fun cancelInvocation(context: Context, invocationId: String)
+
   /** Read an environment variable */
   @Handler suspend fun getEnvVariable(context: Context, env: String): String
 
