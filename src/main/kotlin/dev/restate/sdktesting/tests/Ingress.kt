@@ -212,7 +212,7 @@ class Ingress {
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   @Timeout(value = 15, unit = TimeUnit.SECONDS)
-  @DisplayName("Idempotent send then attach/getOutput")
+  @DisplayName("Idempotent send then attach/getOutput with idempotency key")
   fun idempotentSendThenAttachWIthIdempotencyKey(@InjectClient ingressClient: Client) = runTest {
     val awakeableKey = UUID.randomUUID().toString()
     val myIdempotencyId = UUID.randomUUID().toString()
