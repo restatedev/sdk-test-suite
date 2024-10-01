@@ -56,6 +56,9 @@ interface TestUtilsService {
   /** Echo ingress headers */
   @Handler suspend fun echoHeaders(context: Context): Map<String, String>
 
+  /** Just echo */
+  @Handler @Raw suspend fun rawEcho(context: Context, @Raw input: ByteArray): ByteArray
+
   /** Create an awakeable, register it to AwakeableHolder#hold, then await it. */
   @Handler
   suspend fun createAwakeableAndAwaitIt(

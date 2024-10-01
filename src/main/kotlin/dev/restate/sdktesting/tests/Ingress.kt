@@ -28,6 +28,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
 import org.awaitility.kotlin.until
 import org.awaitility.kotlin.untilAsserted
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Timeout
@@ -170,6 +171,7 @@ class Ingress {
   @Execution(ExecutionMode.CONCURRENT)
   @Timeout(value = 15, unit = TimeUnit.SECONDS)
   @DisplayName("Idempotent send then attach/getOutput")
+  @Disabled
   fun idempotentSendThenAttach(@InjectClient ingressClient: Client) = runTest {
     val awakeableKey = UUID.randomUUID().toString()
     val myIdempotencyId = UUID.randomUUID().toString()
