@@ -37,7 +37,6 @@ dependencies {
 
   implementation(libs.testcontainers.core)
   implementation(libs.testcontainers.kafka)
-  implementation(libs.testcontainers.toxiproxy)
   implementation(libs.docker)
 
   implementation(libs.log4j.api)

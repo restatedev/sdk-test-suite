@@ -84,7 +84,8 @@ abstract class BaseRestateDeployerExtension : ParameterResolver {
     return URL(
         "http",
         "127.0.0.1",
-        getDeployer(extensionContext).getContainerPort(RESTATE_RUNTIME, RUNTIME_META_ENDPOINT_PORT),
+        getDeployer(extensionContext)
+            .getContainerPort(RESTATE_RUNTIME, RUNTIME_ADMIN_ENDPOINT_PORT),
         "")
   }
 
