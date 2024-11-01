@@ -104,6 +104,8 @@ internal constructor(
   }
 
   private fun postStart() {
+    logger.debug("Started post start checks for container {}.", container.containerName)
+
     // Wait for running start
     IsRunningStartupCheckStrategy()
         .waitUntilStartupSuccessful(container.dockerClient, container.containerId)

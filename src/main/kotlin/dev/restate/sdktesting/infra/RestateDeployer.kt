@@ -25,7 +25,6 @@ import org.apache.logging.log4j.LogManager
 import org.junit.jupiter.api.extension.ExtensionContext
 import org.rnorth.ducttape.unreliables.Unreliables
 import org.testcontainers.containers.*
-import org.testcontainers.containers.wait.strategy.Wait
 import org.testcontainers.images.builder.Transferable
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ser.impl.SimpleBeanPropertyFilter
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ser.impl.SimpleFilterProvider
@@ -154,23 +153,13 @@ private constructor(
             }
           }
           .associate { it.second.first to (it.first to it.second.second) }
-  // TODO replace toxiproxy with a socat container
-  private val proxyContainer =
-      ProxyContainer(
-          ToxiproxyContainer("ghcr.io/shopify/toxiproxy:2.5.0")
-              .withImagePullPolicy(config.imagePullPolicy.toTestContainersImagePullPolicy()))
   private val runtimeContainer =
       RestateContainer(config, network, runtimeContainerEnvs, configSchema, copyToContainer)
   private val deployedContainers: Map<String, ContainerHandle> =
       mapOf(
           RESTATE_RUNTIME to
               ContainerHandle(
-                  runtimeContainer,
-                  { proxyContainer.getMappedPort(RESTATE_RUNTIME, it) },
-                  {
-                    Wait.forListeningPort().waitUntilReady(NotCachedContainerInfo(runtimeContainer))
-                    waitRuntimeHealthy()
-                  })) +
+                  runtimeContainer, restartWaitStrategy = { runtimeContainer.waitStartup() })) +
           serviceContainers.map { it.key to ContainerHandle(it.value.second) } +
           additionalContainers.map { it.key to ContainerHandle(it.value) }
 
@@ -201,25 +190,17 @@ private constructor(
     deployServices()
     deployAdditionalContainers()
     deployRuntime()
-    deployProxy(testReportDir)
-
-    // Configure proxy
-    configureProxy()
 
     // Let's execute service discovery to register the services
-    waitRuntimeAdminHealthy()
     val client =
         DeploymentApi(
             ApiClient(HttpClient.newBuilder(), apiClient.objectMapper, null)
                 .setHost("localhost")
-                .setPort(getContainerPort(RESTATE_RUNTIME, RUNTIME_META_ENDPOINT_PORT)))
+                .setPort(getContainerPort(RESTATE_RUNTIME, RUNTIME_ADMIN_ENDPOINT_PORT)))
     serviceSpecs.forEach { spec -> discoverDeployment(client, spec) }
 
     // Log environment
     writeEnvironmentReport(testReportDir)
-
-    // Wait runtime ingress healthy
-    waitRuntimeIngressHealthy()
   }
 
   private fun configureLogger(testReportDir: String) {
@@ -255,43 +236,6 @@ private constructor(
         .dependsOn(additionalContainers.values)
         .start()
     LOG.debug("Restate runtime started. Container id {}", runtimeContainer.containerId)
-  }
-
-  private fun deployProxy(testReportDir: String) {
-    proxyContainer.start(network, testReportDir)
-  }
-
-  private fun configureProxy() {
-    // We use an external proxy to access from the test code to the restate container in order to
-    // retain the tcp port binding across restarts.
-    // Proxy runtime ports
-    val adminPort = proxyContainer.mapPort(RESTATE_RUNTIME, RUNTIME_META_ENDPOINT_PORT)
-    val ingressPort = proxyContainer.mapPort(RESTATE_RUNTIME, RUNTIME_INGRESS_ENDPOINT_PORT)
-
-    LOG.debug("Toxiproxy started. Ingress port: {}. Admin API port: {}", ingressPort, adminPort)
-  }
-
-  private fun waitRuntimeAdminHealthy() {
-    proxyContainer.waitHttp(
-        Wait.forHttp("/health"),
-        RESTATE_RUNTIME,
-        RUNTIME_META_ENDPOINT_PORT,
-    )
-    LOG.debug("Runtime Admin healthy")
-  }
-
-  private fun waitRuntimeIngressHealthy() {
-    proxyContainer.waitHttp(
-        Wait.forHttp("/restate/health"),
-        RESTATE_RUNTIME,
-        RUNTIME_INGRESS_ENDPOINT_PORT,
-    )
-    LOG.debug("Runtime Ingress healthy")
-  }
-
-  private fun waitRuntimeHealthy() {
-    waitRuntimeAdminHealthy()
-    waitRuntimeIngressHealthy()
   }
 
   private fun discoverDeployment(client: DeploymentApi, spec: ServiceSpec) {
@@ -361,10 +305,6 @@ private constructor(
     runtimeContainer.stop()
   }
 
-  private fun teardownProxy() {
-    proxyContainer.stop()
-  }
-
   private fun teardownAll() {
     if (config.retainAfterEnd) {
       LOG.info("Press a button to cleanup the test environment. Deployed network: {}", network.id)
@@ -374,7 +314,6 @@ private constructor(
     teardownRuntime()
     teardownAdditionalContainers()
     teardownServices()
-    teardownProxy()
     network.close()
   }
 
