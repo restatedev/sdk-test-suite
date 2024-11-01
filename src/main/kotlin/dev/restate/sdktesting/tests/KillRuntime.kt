@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Timeout
 import org.junit.jupiter.api.extension.RegisterExtension
 
 @Tag("always-suspending")
+@Tag("only-single-node")
 class KillRuntime {
 
   companion object {

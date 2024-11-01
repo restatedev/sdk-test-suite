@@ -23,17 +23,19 @@ data class RestateDeployerConfig(
     val serviceDeploymentConfig: Map<String, ServiceDeploymentConfig>,
     val restateContainerImage: String = "ghcr.io/restatedev/restate:main",
     val imagePullPolicy: PullPolicy = PullPolicy.ALWAYS,
-    val deployInParallel: Boolean = true,
+    val restateNodes: Int = 1,
     val additionalRuntimeEnvs: Map<String, String> = mapOf(),
     val stateDirectoryMount: String? = null,
     val localIngressPort: Int? = null,
     val localAdminPort: Int? = null,
-    val retainAfterEnd: Boolean = false
+    val localNodePort: Int? = null,
+    val retainAfterEnd: Boolean = false,
 ) {
   init {
     check(serviceDeploymentConfig.containsKey(ServiceSpec.DEFAULT_SERVICE_NAME)) {
       "When configuring the deployer, you must provide the ServiceDeploymentConfig for service '${ServiceSpec.DEFAULT_SERVICE_NAME}'"
     }
+    check(restateNodes >= 1) { "Number of deployed Restate nodes must be >= 1" }
   }
 
   fun getServiceDeploymentConfig(name: String): ServiceDeploymentConfig {

@@ -72,6 +72,12 @@ java -jar restate-sdk-test-suite.jar debug \
 
 Please note, some tests requiring to kill/stop the service deployment won't work with the `debug` command.
 
+## Building this tool
+
+```shell
+./gradlew shadowJar
+```
+
 ## Releasing this tool
 
 Just push a new git tag:

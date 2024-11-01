@@ -120,7 +120,6 @@ Run test suite, executing the service as container.
     val restateDeployerConfig =
         RestateDeployerConfig(
             mapOf(ServiceSpec.DEFAULT_SERVICE_NAME to ContainerServiceDeploymentConfig(imageName)),
-            deployInParallel = parallel,
         )
 
     // Register global config of the deployer
@@ -254,8 +253,9 @@ Run test suite, without executing the service inside a container.
       option()
           .help(
               "Mount the given state directory as restate data when starting the runtime container")
-  val localIngressPort by option().int().help("Ingress port to bind the runtime container")
-  val localAdminPort by option().int().help("Ingress port to bind the admin container")
+  val localIngressPort by option().int().help("Ingress port to bind the restate container")
+  val localAdminPort by option().int().help("Admin port to bind the restate container")
+  val localNodePort by option().int().help("Node port to bind the restate container")
 
   override fun run() {
     val terminal = Terminal()
@@ -268,6 +268,7 @@ Run test suite, without executing the service inside a container.
             },
             localAdminPort = this.localAdminPort,
             localIngressPort = this.localIngressPort,
+            localNodePort = this.localNodePort,
             stateDirectoryMount = this.mountStateDirectory,
             retainAfterEnd = this.retainAfterEnd)
     registerGlobalConfig(testRunnerOptions.applyToDeployerConfig(restateDeployerConfig))
