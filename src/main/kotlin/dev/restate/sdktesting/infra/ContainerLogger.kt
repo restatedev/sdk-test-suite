@@ -22,47 +22,36 @@ internal class ContainerLogger(
 ) : Consumer<OutputFrame> {
 
   private var startCount = 0
-  private var stdoutStream: BufferedWriter? = null
-  private var stderrStream: BufferedWriter? = null
+  private var logStream: BufferedWriter? = null
 
   override fun accept(frame: OutputFrame) {
     when (frame.type) {
       OutputFrame.OutputType.STDOUT -> {
-        resolveStdoutStream().write(frame.utf8String)
+        resolveStream().write(frame.utf8String)
       }
       OutputFrame.OutputType.STDERR -> {
-        resolveStderrStream().write(frame.utf8String)
+        resolveStream().write(frame.utf8String)
       }
       else -> {
-        stdoutStream?.close()
-        stderrStream?.close()
-        stdoutStream = null
-        stderrStream = null
+        logStream?.close()
+        logStream = null
         startCount++
       }
     }
   }
 
-  private fun resolveStdoutStream(): BufferedWriter {
-    if (stdoutStream == null) {
-      stdoutStream = newStream(testReportDirectory, loggerName, "stdout")
+  private fun resolveStream(): BufferedWriter {
+    if (logStream == null) {
+      logStream = newStream(testReportDirectory, loggerName)
     }
-    return stdoutStream!!
-  }
-
-  private fun resolveStderrStream(): BufferedWriter {
-    if (stderrStream == null) {
-      stderrStream = newStream(testReportDirectory, loggerName, "stderr")
-    }
-    return stderrStream!!
+    return logStream!!
   }
 
   private fun newStream(
       testReportDirectory: String,
       loggerName: String,
-      type: String
   ): BufferedWriter {
-    val path = Path.of(testReportDirectory, "${loggerName}_${startCount}_${type}.log")
+    val path = Path.of(testReportDirectory, "${loggerName}_${startCount}.log")
     val fileExists = Files.exists(path)
 
     val writer =

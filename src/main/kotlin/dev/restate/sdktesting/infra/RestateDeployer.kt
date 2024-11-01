@@ -20,8 +20,12 @@ import java.net.URI
 import java.net.http.HttpClient
 import java.nio.file.Path
 import java.util.*
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import org.apache.logging.log4j.CloseableThreadContext
 import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.ThreadContext
 import org.junit.jupiter.api.extension.ExtensionContext
 import org.rnorth.ducttape.unreliables.Unreliables
 import org.testcontainers.containers.*
@@ -153,15 +157,17 @@ private constructor(
             }
           }
           .associate { it.second.first to (it.first to it.second.second) }
-  private val runtimeContainer =
-      RestateContainer(config, network, runtimeContainerEnvs, configSchema, copyToContainer)
+  private val runtimeContainers: List<RestateContainer> =
+      RestateContainer.bootstrapRestateCluster(
+          config, network, runtimeContainerEnvs, configSchema, copyToContainer, config.restateNodes)
+
   private val deployedContainers: Map<String, ContainerHandle> =
-      mapOf(
-          RESTATE_RUNTIME to
-              ContainerHandle(
-                  runtimeContainer, restartWaitStrategy = { runtimeContainer.waitStartup() })) +
-          serviceContainers.map { it.key to ContainerHandle(it.value.second) } +
-          additionalContainers.map { it.key to ContainerHandle(it.value) }
+      (runtimeContainers.map {
+            it.hostname to ContainerHandle(it, restartWaitStrategy = { it.waitStartup() })
+          } +
+              serviceContainers.map { it.key to ContainerHandle(it.value.second) } +
+              additionalContainers.map { it.key to ContainerHandle(it.value) })
+          .associate { it }
 
   init {
     // Configure additional containers to be deployed within the same network where we deploy
@@ -210,7 +216,7 @@ private constructor(
     additionalContainers.forEach { (hostname, container) ->
       container.withLogConsumer(ContainerLogger(testReportDir, hostname))
     }
-    runtimeContainer.configureLogger(testReportDir)
+    runtimeContainers.map { it.configureLogger(testReportDir) }
   }
 
   private fun deployServices() {
@@ -231,11 +237,43 @@ private constructor(
   }
 
   private fun deployRuntime() {
-    runtimeContainer
-        .dependsOn(serviceContainers.values.map { it.second })
-        .dependsOn(additionalContainers.values)
-        .start()
-    LOG.debug("Restate runtime started. Container id {}", runtimeContainer.containerId)
+    val ctx = ThreadContext.getContext()
+    val executor =
+        Executors.newFixedThreadPool(runtimeContainers.size) { runnable ->
+          Executors.defaultThreadFactory().newThread {
+            // Make sure we inject the thread context
+            ThreadContext.putAll(ctx)
+            runnable.run()
+          }
+        }
+
+    val containerDependencies =
+        serviceContainers.values.map { it.second } + additionalContainers.values
+
+    CompletableFuture.allOf(
+            *runtimeContainers
+                .map { container ->
+                  CompletableFuture.runAsync(
+                      {
+                        CloseableThreadContext.put("containerHostname", container.hostname).use {
+                          if (container.hostname != RESTATE_RUNTIME) {
+                            Thread.sleep(5000)
+                            // Sleep first because of an internal init issue of the runtime
+                          }
+                          LOG.debug(
+                              "Restate container '${container.hostname}' using image '${config.restateContainerImage}' is starting")
+                          container.dependsOn(containerDependencies).start()
+                          container.dumpConfiguration()
+                          LOG.debug(
+                              "Restate container '${container.hostname}' id '${container.containerId}' started and is healthy")
+                        }
+                      },
+                      executor)
+                }
+                .toTypedArray())
+        .get(150, TimeUnit.SECONDS)
+
+    executor.shutdown()
   }
 
   private fun discoverDeployment(client: DeploymentApi, spec: ServiceSpec) {
@@ -298,11 +336,22 @@ private constructor(
     // to let flush the logs and spans exported as files.
     // We keep a short timeout though as we don't want to influence too much the teardown time of
     // the tests.
-    runtimeContainer.dockerClient
-        .stopContainerCmd(runtimeContainer.containerId)
-        .withTimeout(1) // This is seconds
-        .exec()
-    runtimeContainer.stop()
+    runtimeContainers.forEach {
+      if (it.containerId == null) {
+        LOG.warn(
+            "During shutdown container ${it.hostname} has no container id, thus it's not running already.")
+        return@forEach
+      }
+      try {
+        it.dockerClient
+            .stopContainerCmd(it.containerId)
+            .withTimeout(1) // This is seconds
+            .exec()
+      } catch (e: Exception) {
+        LOG.warn("Error when trying to send stop container signal to ${it.containerId}", e)
+      }
+    }
+    runtimeContainers.forEach { it.stop() }
   }
 
   private fun teardownAll() {

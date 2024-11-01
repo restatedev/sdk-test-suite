@@ -26,6 +26,7 @@ import org.junit.jupiter.params.provider.ValueSource
 
 /** Test non-determinism/journal mismatch checks in the SDKs. */
 @Tag("only-always-suspending")
+@Tag("only-single-node")
 class NonDeterminismErrors {
   companion object {
     @RegisterExtension

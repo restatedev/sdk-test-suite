@@ -28,10 +28,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Timeout
 import org.junit.jupiter.api.extension.RegisterExtension
 
-// -- Simple sleep tests
-
-// -- Sleep tests with terminations/killings of runtime/service endpoint
-
+// -- Sleep tests with terminations/killings of service endpoint
 @Tag("always-suspending")
 class SleepWithFailures {
 

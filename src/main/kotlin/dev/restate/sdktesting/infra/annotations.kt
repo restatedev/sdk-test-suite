@@ -10,6 +10,7 @@ package dev.restate.sdktesting.infra
 
 const val RESTATE_RUNTIME = "runtime"
 const val RUNTIME_INGRESS_ENDPOINT_PORT = 8080
+const val RUNTIME_NODE_PORT = 5122
 internal const val RUNTIME_ADMIN_ENDPOINT_PORT = 9070
 
 @Target(AnnotationTarget.VALUE_PARAMETER) annotation class InjectClient

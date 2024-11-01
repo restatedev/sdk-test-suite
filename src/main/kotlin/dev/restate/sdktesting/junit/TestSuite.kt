@@ -29,7 +29,8 @@ import org.junit.platform.reporting.legacy.xml.LegacyXmlReportGeneratingListener
 class TestSuite(
     val name: String,
     val additionalEnvs: Map<String, String>,
-    val junitIncludeTags: String
+    val junitIncludeTags: String,
+    val restateNodes: Int = 1
 ) {
   fun runTests(
       terminal: Terminal,
@@ -51,7 +52,8 @@ class TestSuite(
     Configurator.reconfigure(log4j2Configuration)
 
     // Apply additional runtime envs
-    val restateDeployerConfig = getGlobalConfig().copy(additionalRuntimeEnvs = additionalEnvs)
+    val restateDeployerConfig =
+        getGlobalConfig().copy(additionalRuntimeEnvs = additionalEnvs, restateNodes = restateNodes)
     registerGlobalConfig(restateDeployerConfig)
 
     // Prepare launch request
@@ -117,7 +119,9 @@ class TestSuite(
     val layout =
         builder
             .newLayout("PatternLayout")
-            .addAttribute("pattern", "%-4r %-5p [%X{test_class}][%t] %c{1.2.*} - %m%n")
+            .addAttribute(
+                "pattern",
+                "%-4r %-5p [%X{test_class}][%t]%notEmpty{[%X{containerHostname}]} %c{1.2.*} - %m%n")
 
     val fileAppender =
         builder
@@ -133,7 +137,7 @@ class TestSuite(
 
     val testContainersLogger =
         builder
-            .newLogger("org.testcontainers", Level.INFO)
+            .newLogger("org.testcontainers", Level.TRACE)
             .add(builder.newAppenderRef("log"))
             .addAttribute("additivity", false)
 

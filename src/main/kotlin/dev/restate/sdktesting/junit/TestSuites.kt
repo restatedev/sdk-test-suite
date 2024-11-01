@@ -10,19 +10,36 @@ package dev.restate.sdktesting.junit
 
 object TestSuites {
   val DEFAULT_SUITE = TestSuite("default", emptyMap(), "none() | always-suspending")
+  val THREE_NODES_SUITE =
+      TestSuite(
+          "threeNodes",
+          mapOf(
+              "RESTATE_BOOTSTRAP_NUM_PARTITIONS" to "4",
+          ),
+          "(none() | always-suspending) & !only-single-node",
+          3)
   private val ALWAYS_SUSPENDING_SUITE =
       TestSuite(
           "alwaysSuspending",
           mapOf("RESTATE_WORKER__INVOKER__INACTIVITY_TIMEOUT" to "0s"),
           "always-suspending | only-always-suspending")
+  private val THREE_NODES_ALWAYS_SUSPENDING_SUITE =
+      TestSuite(
+          "threeNodesAlwaysSuspending",
+          mapOf(
+              "RESTATE_WORKER__INVOKER__INACTIVITY_TIMEOUT" to "0s",
+              "RESTATE_BOOTSTRAP_NUM_PARTITIONS" to "4",
+          ),
+          "(always-suspending | only-always-suspending) & !only-single-node",
+          3)
   private val SINGLE_THREAD_SINGLE_PARTITION_SUITE =
       TestSuite(
           "singleThreadSinglePartition",
           mapOf(
-              "RESTATE_WORKER__BOOTSTRAP_NUM_PARTITIONS" to "1",
+              "RESTATE_BOOTSTRAP_NUM_PARTITIONS" to "1",
               "RESTATE_DEFAULT_THREAD_POOL_SIZE" to "1",
           ),
-          "none() | always-suspending")
+          "none() | always-suspending | stop-runtime")
   private val LAZY_STATE_SUITE =
       TestSuite(
           "lazyState",
@@ -37,7 +54,9 @@ object TestSuites {
   fun allSuites(): List<TestSuite> {
     return listOf(
         DEFAULT_SUITE,
+        THREE_NODES_SUITE,
         ALWAYS_SUSPENDING_SUITE,
+        THREE_NODES_ALWAYS_SUSPENDING_SUITE,
         SINGLE_THREAD_SINGLE_PARTITION_SUITE,
         LAZY_STATE_SUITE,
         PERSISTED_TIMERS_SUITE)
@@ -53,7 +72,10 @@ object TestSuites {
               result +
                   when (configuration) {
                     DEFAULT_SUITE.name -> listOf(DEFAULT_SUITE)
+                    THREE_NODES_SUITE.name -> listOf(THREE_NODES_SUITE)
                     ALWAYS_SUSPENDING_SUITE.name -> listOf(ALWAYS_SUSPENDING_SUITE)
+                    THREE_NODES_ALWAYS_SUSPENDING_SUITE.name ->
+                        listOf(THREE_NODES_ALWAYS_SUSPENDING_SUITE)
                     SINGLE_THREAD_SINGLE_PARTITION_SUITE.name ->
                         listOf(SINGLE_THREAD_SINGLE_PARTITION_SUITE)
                     LAZY_STATE_SUITE.name -> listOf(LAZY_STATE_SUITE)
