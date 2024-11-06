@@ -51,7 +51,7 @@ class Sleep {
 
     val elapsed = measureNanoTime {
       TestUtilsServiceClient.fromClient(ingressClient)
-          .sleepConcurrently(listOf(sleepDuration.inWholeMilliseconds))
+          .sleepConcurrently(listOf(sleepDuration.inWholeMilliseconds), idempotentCallOptions())
     }
 
     assertThat(elapsed.nanoseconds).isGreaterThanOrEqualTo(sleepDuration)
@@ -78,7 +78,8 @@ class Sleep {
                       Random.nextLong(
                           minSleepDuration.inWholeMilliseconds..maxSleepDuration
                                   .inWholeMilliseconds)
-                    })
+                    },
+                    idempotentCallOptions())
               }
             }
             .joinAll()

@@ -17,6 +17,7 @@ import dev.restate.sdktesting.contracts.*
 import dev.restate.sdktesting.infra.*
 import java.net.URL
 import java.util.*
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.encodeToString
@@ -25,7 +26,8 @@ import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.assertj.core.api.InstanceOfAssertFactories
 import org.awaitility.kotlin.await
-import org.awaitility.kotlin.untilAsserted
+import org.awaitility.kotlin.withAlias
+import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.RegisterExtension
 
@@ -42,6 +44,8 @@ class PrivateService {
   }
 
   @Test
+  @DisplayName(
+      "Make a handler ingress private and try to call it both directly and through a proxy service")
   fun privateService(
       @InjectMetaURL metaURL: URL,
       @InjectClient ingressClient: Client,
@@ -50,16 +54,18 @@ class PrivateService {
     val counterId = UUID.randomUUID().toString()
     val counterClient = CounterClient.fromClient(ingressClient, counterId)
 
-    counterClient.add(1)
+    counterClient.add(1, idempotentCallOptions())
 
     // Make the service private
     adminServiceClient.modifyService(
         CounterDefinitions.SERVICE_NAME, ModifyServiceRequest()._public(false))
 
     // Wait for the service to be private
-    await untilAsserted
+    await withAlias
+        "the service becomes private" untilAsserted
         {
-          assertThatThrownBy { runBlocking { counterClient.get() } }
+          val ctx = currentCoroutineContext()
+          assertThatThrownBy { runBlocking(ctx) { counterClient.get() } }
               .asInstanceOf(InstanceOfAssertFactories.type(IngressException::class.java))
               .returns(400, IngressException::getStatusCode)
         }
@@ -71,13 +77,18 @@ class PrivateService {
                 CounterDefinitions.SERVICE_NAME,
                 counterId,
                 "add",
-                Json.encodeToString(1).encodeToByteArray()))
+                Json.encodeToString(1).encodeToByteArray()),
+            idempotentCallOptions())
 
     // Make the service public again
     adminServiceClient.modifyService(
         CounterDefinitions.SERVICE_NAME, ModifyServiceRequest()._public(true))
 
     // Wait to get the correct count
-    await untilAsserted { runBlocking { assertThat(counterClient.get()).isEqualTo(2L) } }
+    await withAlias
+        "the service becomes public again" untilAsserted
+        {
+          assertThat(counterClient.get()).isEqualTo(2L)
+        }
   }
 }

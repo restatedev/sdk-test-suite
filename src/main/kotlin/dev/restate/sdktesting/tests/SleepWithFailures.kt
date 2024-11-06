@@ -51,7 +51,7 @@ class SleepWithFailures {
     val job = coroutineScope {
       launch {
         TestUtilsServiceClient.fromClient(ingressClient)
-            .sleepConcurrently(listOf(sleepDuration.inWholeMilliseconds))
+            .sleepConcurrently(listOf(sleepDuration.inWholeMilliseconds), idempotentCallOptions())
       }
     }
     delay(

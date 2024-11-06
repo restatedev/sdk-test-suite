@@ -39,6 +39,9 @@ class RawHandler {
   fun rawHandler(@InjectClient ingressClient: Client) = runTest {
     val bytes = Random.nextBytes(100)
 
-    assertThat(TestUtilsServiceClient.fromClient(ingressClient).rawEcho(bytes)).isEqualTo(bytes)
+    assertThat(
+            TestUtilsServiceClient.fromClient(ingressClient)
+                .rawEcho(bytes, idempotentCallOptions()))
+        .isEqualTo(bytes)
   }
 }

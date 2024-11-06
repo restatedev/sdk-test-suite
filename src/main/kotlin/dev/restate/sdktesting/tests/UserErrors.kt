@@ -15,10 +15,8 @@ import dev.restate.sdktesting.contracts.FailingClient
 import dev.restate.sdktesting.contracts.FailingDefinitions
 import dev.restate.sdktesting.infra.*
 import java.util.*
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.assertj.core.api.Assertions.assertThat
-import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
@@ -46,12 +44,12 @@ class UserErrors {
   fun invokeTerminallyFailingCall(@InjectClient ingressClient: Client) = runTest {
     val errorMessage = "my error"
 
-    assertThatThrownBy {
-          runBlocking {
-            FailingClient.fromClient(ingressClient, UUID.randomUUID().toString())
-                .terminallyFailingCall(errorMessage)
-          }
-        }
+    assertThat(
+            runCatching {
+                  FailingClient.fromClient(ingressClient, UUID.randomUUID().toString())
+                      .terminallyFailingCall(errorMessage, idempotentCallOptions())
+                }
+                .exceptionOrNull())
         .hasMessageContaining(errorMessage)
   }
 
@@ -72,10 +70,11 @@ class UserErrors {
     val counterName = "my-failure-counter"
     val counterClient = CounterClient.fromClient(ingressClient, counterName)
 
-    assertThatThrownBy { runBlocking { counterClient.addThenFail(1) } }
+    assertThat(
+            runCatching { counterClient.addThenFail(1, idempotentCallOptions()) }.exceptionOrNull())
         .hasMessageContaining(counterName)
 
-    assertThat(counterClient.get()).isEqualTo(1)
+    assertThat(counterClient.get(idempotentCallOptions())).isEqualTo(1)
   }
 
   @DisplayName("Test propagate failure from another service")
@@ -85,7 +84,11 @@ class UserErrors {
     val errorMessage = "propagated error"
     val failingClient = FailingClient.fromClient(ingressClient, UUID.randomUUID().toString())
 
-    assertThatThrownBy { runBlocking { failingClient.callTerminallyFailingCall(errorMessage) } }
+    assertThat(
+            runCatching {
+                  failingClient.callTerminallyFailingCall(errorMessage, idempotentCallOptions())
+                }
+                .exceptionOrNull())
         .hasMessageContaining(errorMessage)
   }
 
@@ -95,7 +98,7 @@ class UserErrors {
   fun invocationWithEventualSuccess(@InjectClient ingressClient: Client) = runTest {
     assertThat(
             FailingClient.fromClient(ingressClient, UUID.randomUUID().toString())
-                .failingCallWithEventualSuccess())
+                .failingCallWithEventualSuccess(idempotentCallOptions()))
         .isEqualTo(SUCCESS_ATTEMPT)
   }
 
@@ -108,7 +111,7 @@ class UserErrors {
     assertThat(
             runCatching {
                   FailingClient.fromClient(ingressClient, UUID.randomUUID().toString())
-                      .terminallyFailingSideEffect(errorMessage)
+                      .terminallyFailingSideEffect(errorMessage, idempotentCallOptions())
                 }
                 .exceptionOrNull())
         .hasMessageContaining(errorMessage)

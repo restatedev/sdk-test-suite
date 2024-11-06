@@ -73,9 +73,10 @@ class CallOrdering {
               } else {
                 ManyCallRequest(proxyRequest, false, true)
               }
-            })
+            },
+            idempotentCallOptions())
 
-    assertThat(ListObjectClient.fromClient(ingressClient, listName).clear())
+    assertThat(ListObjectClient.fromClient(ingressClient, listName).clear(idempotentCallOptions()))
         .containsExactly("0", "1", "2")
   }
 }

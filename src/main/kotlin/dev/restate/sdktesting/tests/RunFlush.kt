@@ -38,7 +38,9 @@ class RunFlush {
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   fun flush(@InjectClient ingressClient: Client) = runTest {
-    assertThat(TestUtilsServiceClient.fromClient(ingressClient).countExecutedSideEffects(3))
+    assertThat(
+            TestUtilsServiceClient.fromClient(ingressClient)
+                .countExecutedSideEffects(3, idempotentCallOptions()))
         .isEqualTo(0)
   }
 }

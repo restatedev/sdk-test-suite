@@ -15,13 +15,11 @@ import dev.restate.sdktesting.infra.RestateDeployerExtension
 import dev.restate.sdktesting.infra.ServiceSpec
 import java.util.*
 import java.util.function.Function
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
-import org.awaitility.kotlin.untilAsserted
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.RegisterExtension
@@ -48,11 +46,11 @@ class State {
   @Execution(ExecutionMode.CONCURRENT)
   fun add(@InjectClient ingressClient: Client) = runTest {
     val counterClient = CounterClient.fromClient(ingressClient, "add")
-    val res1 = counterClient.add(1)
+    val res1 = counterClient.add(1, idempotentCallOptions())
     assertThat(res1.oldValue).isEqualTo(0)
     assertThat(res1.newValue).isEqualTo(1)
 
-    val res2 = counterClient.add(2)
+    val res2 = counterClient.add(2, idempotentCallOptions())
     assertThat(res2.oldValue).isEqualTo(1)
     assertThat(res2.newValue).isEqualTo(3)
   }
@@ -70,10 +68,11 @@ class State {
               CounterDefinitions.SERVICE_NAME,
               counterId,
               "add",
-              Json.encodeToString(1).encodeToByteArray()))
+              Json.encodeToString(1).encodeToByteArray()),
+          idempotentCallOptions())
     }
 
-    await untilAsserted { runBlocking { assertThat(counterClient.get()).isEqualTo(3L) } }
+    await untilAsserted { assertThat(counterClient.get()).isEqualTo(3L) }
   }
 
   @Test
@@ -83,22 +82,22 @@ class State {
     val mapObj = MapObjectClient.fromClient(ingressClient, mapName)
     val anotherMapObj = MapObjectClient.fromClient(ingressClient, mapName + "1")
 
-    mapObj.set(Entry("my-key-0", "my-value-0"))
-    mapObj.set(Entry("my-key-1", "my-value-1"))
+    mapObj.set(Entry("my-key-0", "my-value-0"), idempotentCallOptions())
+    mapObj.set(Entry("my-key-1", "my-value-1"), idempotentCallOptions())
 
     // Set state to another map
-    anotherMapObj.set(Entry("my-key-2", "my-value-2"))
+    anotherMapObj.set(Entry("my-key-2", "my-value-2"), idempotentCallOptions())
 
     // Clear all
-    assertThat(mapObj.clearAll())
+    assertThat(mapObj.clearAll(idempotentCallOptions()))
         .map(Function { it.key })
         .containsExactlyInAnyOrder("my-key-0", "my-key-1")
 
     // Check keys are not available
-    assertThat(mapObj.get("my-key-0")).isEmpty()
-    assertThat(mapObj.get("my-key-1")).isEmpty()
+    assertThat(mapObj.get("my-key-0", idempotentCallOptions())).isEmpty()
+    assertThat(mapObj.get("my-key-1", idempotentCallOptions())).isEmpty()
 
     // Check the other service instance was left untouched
-    assertThat(anotherMapObj.get("my-key-2")).isEqualTo("my-value-2")
+    assertThat(anotherMapObj.get("my-key-2", idempotentCallOptions())).isEqualTo("my-value-2")
   }
 }

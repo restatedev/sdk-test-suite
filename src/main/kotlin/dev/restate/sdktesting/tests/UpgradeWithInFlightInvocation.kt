@@ -16,14 +16,10 @@ import dev.restate.sdk.client.Client
 import dev.restate.sdktesting.contracts.*
 import dev.restate.sdktesting.infra.*
 import java.net.URL
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
-import org.awaitility.kotlin.matches
-import org.awaitility.kotlin.until
-import org.awaitility.kotlin.untilAsserted
-import org.awaitility.kotlin.untilCallTo
+import org.awaitility.kotlin.withAlias
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.RegisterExtension
@@ -74,31 +70,34 @@ class UpgradeWithInFlightInvocation {
                         GetEnvVariable(UPGRADE_TEST_ENV),
                         CreateAwakeableAndAwaitIt(awakeableKey),
                         GetEnvVariable(UPGRADE_TEST_ENV),
-                    )))
+                    )),
+                idempotentCallOptions())
 
         // Await until AwakeableHolder has an awakeable
         val awakeableHolderClient = AwakeableHolderClient.fromClient(ingressClient, awakeableKey)
-        await until { runBlocking { awakeableHolderClient.hasAwakeable() } }
+        await withAlias
+            "reach sync point" untilAsserted
+            {
+              assertThat(awakeableHolderClient.hasAwakeable()).isTrue
+            }
 
         // Now register the update
         registerService2(metaURL)
 
-        // Let's wait for at least once returning v2
-        await untilCallTo
+        await withAlias
+            "should now use service v2" untilAsserted
             {
-              runBlocking { testUtilsClient.getEnvVariable(UPGRADE_TEST_ENV) }
-            } matches
-            { result ->
-              result!! == "v2"
+              assertThat(testUtilsClient.getEnvVariable(UPGRADE_TEST_ENV)).isEqualTo("v2")
             }
 
         // Now let's resume the awakeable
-        awakeableHolderClient.unlock("unlocked")
+        awakeableHolderClient.unlock("unlocked", idempotentCallOptions())
 
         // Let's check the list the interpreter appended to contains always v1 env variables
-        await untilAsserted
+        await withAlias
+            "both v1 and v2 should be present in the list object" untilAsserted
             {
-              assertThat(runBlocking { ListObjectClient.fromClient(ingressClient, listName).get() })
+              assertThat(ListObjectClient.fromClient(ingressClient, listName).get())
                   .containsExactly("v1", "unlocked", "v1")
             }
       }

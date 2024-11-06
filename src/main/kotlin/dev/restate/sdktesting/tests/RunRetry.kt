@@ -41,7 +41,7 @@ class RunRetry {
 
     assertThat(
             FailingClient.fromClient(ingressClient, UUID.randomUUID().toString())
-                .sideEffectSucceedsAfterGivenAttempts(attempts))
+                .sideEffectSucceedsAfterGivenAttempts(attempts, idempotentCallOptions()))
         .isGreaterThanOrEqualTo(attempts)
   }
 
@@ -53,7 +53,7 @@ class RunRetry {
 
     assertThat(
             FailingClient.fromClient(ingressClient, UUID.randomUUID().toString())
-                .sideEffectFailsAfterGivenAttempts(attempts))
+                .sideEffectFailsAfterGivenAttempts(attempts, idempotentCallOptions()))
         .isGreaterThanOrEqualTo(attempts)
   }
 }

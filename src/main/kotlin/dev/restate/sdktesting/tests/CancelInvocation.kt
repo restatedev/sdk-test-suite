@@ -19,8 +19,9 @@ import java.util.*
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.*
 import kotlinx.coroutines.test.runTest
+import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
-import org.awaitility.kotlin.until
+import org.awaitility.kotlin.withAlias
 import org.junit.jupiter.api.extension.RegisterExtension
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.EnumSource
@@ -49,24 +50,33 @@ class CancelInvocation {
     val cancelTestClient = CancelTestRunnerClient.fromClient(ingressClient, key)
     val blockingServiceClient = CancelTestBlockingServiceClient.fromClient(ingressClient, key)
 
-    val id = cancelTestClient.send().startTest(blockingOperation).invocationId
+    val id =
+        cancelTestClient.send().startTest(blockingOperation, idempotentCallOptions()).invocationId
 
     val awakeableHolderClient = AwakeableHolderClient.fromClient(ingressClient, "cancel")
-
-    await until { runBlocking { awakeableHolderClient.hasAwakeable() } }
-
-    awakeableHolderClient.unlock("cancel")
+    await withAlias
+        "awakeable is registered" untilAsserted
+        {
+          assertThat(awakeableHolderClient.hasAwakeable()).isTrue()
+        }
+    awakeableHolderClient.unlock("cancel", idempotentCallOptions())
 
     val client = InvocationApi(ApiClient().setHost(metaURL.host).setPort(metaURL.port))
 
     // The termination signal might arrive before the blocking call to the cancel singleton was
     // made, so we need to retry.
-    await.ignoreException(TimeoutCancellationException::class.java).until {
-      client.terminateInvocation(id, TerminationMode.CANCEL)
-      runBlocking { withTimeout(1.seconds) { cancelTestClient.verifyTest() } }
-    }
+    await.ignoreException(TimeoutCancellationException::class.java) withAlias
+        "verify test" untilAsserted
+        {
+          client.terminateInvocation(id, TerminationMode.CANCEL)
+          withTimeout(1.seconds) { cancelTestClient.verifyTest() }
+        }
 
     // Check that the singleton service is unlocked
-    blockingServiceClient.isUnlocked()
+    await withAlias
+        "blocking service is unlocked" untilAsserted
+        {
+          blockingServiceClient.isUnlocked()
+        }
   }
 }

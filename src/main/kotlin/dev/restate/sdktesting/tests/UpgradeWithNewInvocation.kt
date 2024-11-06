@@ -16,12 +16,10 @@ import dev.restate.sdk.client.Client
 import dev.restate.sdktesting.contracts.*
 import dev.restate.sdktesting.infra.*
 import java.net.URL
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
-import org.awaitility.kotlin.matches
-import org.awaitility.kotlin.untilCallTo
+import org.awaitility.kotlin.withAlias
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.RegisterExtension
@@ -64,7 +62,7 @@ class UpgradeWithNewInvocation {
     val testUtilsClient = TestUtilsServiceClient.fromClient(ingressClient)
 
     // Execute the first request
-    val firstResult = testUtilsClient.getEnvVariable(UPGRADE_TEST_ENV)
+    val firstResult = testUtilsClient.getEnvVariable(UPGRADE_TEST_ENV, idempotentCallOptions())
     assertThat(firstResult).isEqualTo("v1")
 
     // Now register the update
@@ -74,12 +72,10 @@ class UpgradeWithNewInvocation {
     // (this effectively depends on implementation details).
     // For this reason, we try to invoke the upgrade test method several times until we see the new
     // version running
-    await untilCallTo
+    await withAlias
+        "should now use service v2" untilAsserted
         {
-          runBlocking { testUtilsClient.getEnvVariable(UPGRADE_TEST_ENV) }
-        } matches
-        { result ->
-          result!! == "v2"
+          assertThat(testUtilsClient.getEnvVariable(UPGRADE_TEST_ENV)).isEqualTo("v2")
         }
   }
 }
