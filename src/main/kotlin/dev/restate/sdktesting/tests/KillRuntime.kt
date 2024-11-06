@@ -38,7 +38,7 @@ class KillRuntime {
       @InjectClient ingressClient: Client,
       @InjectContainerHandle(RESTATE_RUNTIME) runtimeHandle: ContainerHandle
   ) = runTest {
-    val counterClient = CounterClient.fromClient(ingressClient, "my-key")
+    var counterClient = CounterClient.fromClient(ingressClient, "my-key")
 
     val res1 = counterClient.add(1)
     assertThat(res1.oldValue).isEqualTo(0)
@@ -47,6 +47,11 @@ class KillRuntime {
     // Stop and start the runtime
     runtimeHandle.killAndRestart()
 
+    // We need a new client, because on restarts docker might mess up the exposed ports. NotFunky
+    // but true...
+    counterClient =
+        CounterClient.fromClient(
+            Client.connect("http://127.0.0.1:${runtimeHandle.getMappedPort(8080)!!}"), "my-key")
     val res2 = counterClient.add(2)
     assertThat(res2.oldValue).isEqualTo(1)
     assertThat(res2.newValue).isEqualTo(3)

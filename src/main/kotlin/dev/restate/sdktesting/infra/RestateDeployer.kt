@@ -107,7 +107,9 @@ private constructor(
       val defaultLogFilters =
           mapOf(
               "restate_invoker" to "trace",
+              "restate_ingress_http" to "trace",
               "restate_ingress_kafka" to "trace",
+              "restate_core::partitions" to "trace",
               "restate" to "debug")
       val defaultLog =
           (listOf("info") + defaultLogFilters.map { "${it.key}=${it.value}" }).joinToString(
