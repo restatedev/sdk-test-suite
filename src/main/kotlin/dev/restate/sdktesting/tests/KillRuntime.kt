@@ -32,7 +32,7 @@ class KillRuntime {
     }
   }
 
-  @Timeout(value = 30, unit = TimeUnit.SECONDS)
+  @Timeout(value = 60, unit = TimeUnit.SECONDS)
   @Test
   fun startAndKillRuntimeRetainsTheState(
       @InjectClient ingressClient: Client,

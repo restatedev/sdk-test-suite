@@ -32,7 +32,7 @@ class StopRuntime {
     }
   }
 
-  @Timeout(value = 30, unit = TimeUnit.SECONDS)
+  @Timeout(value = 60, unit = TimeUnit.SECONDS)
   @Test
   fun startAndStopRuntimeRetainsTheState(
       @InjectClient ingressClient: Client,

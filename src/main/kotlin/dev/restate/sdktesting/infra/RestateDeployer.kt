@@ -207,6 +207,8 @@ private constructor(
 
     // Log environment
     writeEnvironmentReport(testReportDir)
+
+    LOG.info("Docker environment up and running")
   }
 
   private fun configureLogger(testReportDir: String) {
@@ -364,6 +366,7 @@ private constructor(
     teardownAdditionalContainers()
     teardownServices()
     network.close()
+    LOG.info("Docker environment cleaned up")
   }
 
   internal fun getContainerPort(hostName: String, port: Int): Int {
