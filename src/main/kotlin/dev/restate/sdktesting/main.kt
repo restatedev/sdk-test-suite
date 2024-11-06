@@ -54,6 +54,9 @@ class RestateSdkTestSuite : CliktCommand() {
     // important to make Configurator.reconfigure work
     System.setProperty(
         "log4j2.contextSelector", "org.apache.logging.log4j.core.selector.BasicContextSelector")
+    // The default keep alive time is way too long, and this is a problem when we stop and restart
+    // containers.
+    System.setProperty("jdk.httpclient.keepalive.timeout", "5")
   }
 }
 
