@@ -15,10 +15,10 @@ import dev.restate.sdk.client.Client
 import dev.restate.sdktesting.contracts.*
 import dev.restate.sdktesting.infra.*
 import java.net.URL
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
+import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
-import org.awaitility.kotlin.until
+import org.awaitility.kotlin.withAlias
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.RegisterExtension
 
@@ -40,17 +40,22 @@ class KillInvocation {
   fun kill(@InjectClient ingressClient: Client, @InjectMetaURL metaURL: URL) = runTest {
     val id = KillTestRunnerClient.fromClient(ingressClient).send().startCallTree().invocationId
     val awakeableHolderClient = AwakeableHolderClient.fromClient(ingressClient, "kill")
-
-    // Await until AwakeableHolder has an awakeable and then complete it.
     // With this synchronization point we make sure the call tree has been built before killing it.
-    await until { runBlocking { awakeableHolderClient.hasAwakeable() } }
-    awakeableHolderClient.unlock("")
+    await withAlias
+        "awakeable is registered" untilAsserted
+        {
+          assertThat(awakeableHolderClient.hasAwakeable()).isTrue()
+        }
+    awakeableHolderClient.unlock("cancel", idempotentCallOptions())
 
     // Kill the invocation
     val client = InvocationApi(ApiClient().setHost(metaURL.host).setPort(metaURL.port))
     client.terminateInvocation(id, TerminationMode.KILL)
 
-    // Check that the singleton service is unlocked after killing the call tree
-    KillTestSingletonClient.fromClient(ingressClient, "").isUnlocked()
+    await withAlias
+        "singleton service is unlocked after killing the call tree" untilAsserted
+        {
+          KillTestSingletonClient.fromClient(ingressClient, "").isUnlocked()
+        }
   }
 }

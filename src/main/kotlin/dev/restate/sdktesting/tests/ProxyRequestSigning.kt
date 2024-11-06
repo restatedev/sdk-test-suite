@@ -52,7 +52,7 @@ MC4CAQAwBQYDK2VwBCIEIHsQRVQ+AZX9/Yy1b0Zw+OA+bb7xDxGsAd5kB45jZhoc
     val counterName = UUID.randomUUID().toString()
     val client = CounterClient.fromClient(ingressClient, counterName)
 
-    client.add(1)
-    assertThat(client.get()).isEqualTo(1)
+    client.add(1, idempotentCallOptions())
+    assertThat(client.get(idempotentCallOptions())).isEqualTo(1)
   }
 }

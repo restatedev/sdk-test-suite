@@ -17,6 +17,8 @@ import dev.restate.sdktesting.contracts.NonDeterministicDefinitions
 import dev.restate.sdktesting.infra.*
 import kotlinx.coroutines.test.runTest
 import org.assertj.core.api.Assertions.*
+import org.awaitility.kotlin.await
+import org.awaitility.kotlin.withAlias
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.extension.RegisterExtension
 import org.junit.jupiter.api.parallel.Execution
@@ -51,7 +53,7 @@ class NonDeterminismErrors {
   fun method(handlerName: String, @InjectClient ingressClient: Client) = runTest {
     // Increment the count first, this makes sure that the counter service is there.
     val c = CounterClient.fromClient(ingressClient, handlerName)
-    c.add(1)
+    c.add(1, idempotentCallOptions())
 
     assertThatThrownBy {
           ingressClient.call(
@@ -59,11 +61,11 @@ class NonDeterminismErrors {
                   NonDeterministicDefinitions.SERVICE_NAME, handlerName, handlerName),
               Serde.VOID,
               Serde.VOID,
-              null)
+              null,
+              idempotentCallOptions())
         }
         .isNotNull()
 
-    // Assert the counter was not incremented
-    assertThat(CounterClient.fromClient(ingressClient, handlerName).get()).isEqualTo(1)
+    await withAlias "counter was not incremented" untilAsserted { assertThat(c.get()).isEqualTo(1) }
   }
 }

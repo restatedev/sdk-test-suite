@@ -22,16 +22,15 @@ import dev.restate.sdktesting.infra.runtimeconfig.KafkaClusterOptions
 import dev.restate.sdktesting.infra.runtimeconfig.RestateConfigSchema
 import java.net.URL
 import java.util.*
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.Producer
 import org.apache.kafka.clients.producer.ProducerRecord
+import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
-import org.awaitility.kotlin.matches
-import org.awaitility.kotlin.untilCallTo
+import org.awaitility.kotlin.withAlias
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.RegisterExtension
 import org.junit.jupiter.api.parallel.Execution
@@ -88,13 +87,10 @@ class KafkaIngress {
         COUNTER_TOPIC,
         listOf(counter to "1", counter to "2", counter to "3"))
 
-    // Now wait for the update to be visible
-    await untilCallTo
+    await withAlias
+        "Updates from Kafka are visible in the counter" untilAsserted
         {
-          runBlocking { CounterClient.fromClient(ingressClient, counter).get() }
-        } matches
-        { num ->
-          num!! == 6L
+          assertThat(CounterClient.fromClient(ingressClient, counter).get()).isEqualTo(6L)
         }
   }
 
@@ -144,13 +140,10 @@ class KafkaIngress {
                         Json.encodeToString(3).encodeToByteArray())),
         ))
 
-    // Now wait for the update to be visible
-    await untilCallTo
+    await withAlias
+        "Updates from Kafka are visible in the counter" untilAsserted
         {
-          runBlocking { CounterClient.fromClient(ingressClient, counter).get() }
-        } matches
-        { num ->
-          num!! == 6L
+          assertThat(CounterClient.fromClient(ingressClient, counter).get()).isEqualTo(6L)
         }
   }
 }

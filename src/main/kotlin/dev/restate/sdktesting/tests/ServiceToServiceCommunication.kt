@@ -15,13 +15,11 @@ import dev.restate.sdktesting.infra.RestateDeployerExtension
 import dev.restate.sdktesting.infra.ServiceSpec
 import java.util.UUID
 import java.util.concurrent.TimeUnit
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
-import org.awaitility.kotlin.untilAsserted
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Timeout
@@ -56,7 +54,8 @@ class ServiceToServiceCommunication {
                     TestUtilsServiceDefinitions.SERVICE_NAME,
                     null,
                     "uppercaseEcho",
-                    Json.encodeToString("ping").encodeToByteArray())))
+                    Json.encodeToString("ping").encodeToByteArray()),
+                idempotentCallOptions()))
         .isEqualTo(Json.encodeToString("PING").encodeToByteArray())
   }
 
@@ -72,9 +71,10 @@ class ServiceToServiceCommunication {
             CounterDefinitions.SERVICE_NAME,
             counterId,
             "add",
-            Json.encodeToString(1).encodeToByteArray()))
+            Json.encodeToString(1).encodeToByteArray()),
+        idempotentCallOptions())
 
-    await untilAsserted { runBlocking { assertThat(counterClient.get()).isEqualTo(1L) } }
+    await untilAsserted { assertThat(counterClient.get()).isEqualTo(1L) }
   }
 
   @Test
@@ -93,9 +93,10 @@ class ServiceToServiceCommunication {
               counterId,
               "add",
               Json.encodeToString(1).encodeToByteArray(),
-              100))
+              100),
+          idempotentCallOptions())
     }
 
-    await untilAsserted { runBlocking { assertThat(counterClient.get()).isEqualTo(10L) } }
+    await untilAsserted { assertThat(counterClient.get()).isEqualTo(10L) }
   }
 }

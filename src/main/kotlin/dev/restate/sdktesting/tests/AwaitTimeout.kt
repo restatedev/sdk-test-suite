@@ -44,7 +44,8 @@ class AwaitTimeout {
             TestUtilsServiceClient.fromClient(ingressClient)
                 .createAwakeableAndAwaitIt(
                     CreateAwakeableAndAwaitItRequest(
-                        UUID.randomUUID().toString(), timeout.toMillis())))
+                        UUID.randomUUID().toString(), timeout.toMillis()),
+                    idempotentCallOptions()))
         .isEqualTo(TimeoutResponse)
   }
 }

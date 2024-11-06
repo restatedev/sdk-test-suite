@@ -40,7 +40,7 @@ class KillRuntime {
   ) = runTest {
     var counterClient = CounterClient.fromClient(ingressClient, "my-key")
 
-    val res1 = counterClient.add(1)
+    val res1 = counterClient.add(1, idempotentCallOptions())
     assertThat(res1.oldValue).isEqualTo(0)
     assertThat(res1.newValue).isEqualTo(1)
 
@@ -52,7 +52,7 @@ class KillRuntime {
     counterClient =
         CounterClient.fromClient(
             Client.connect("http://127.0.0.1:${runtimeHandle.getMappedPort(8080)!!}"), "my-key")
-    val res2 = counterClient.add(2)
+    val res2 = counterClient.add(2, idempotentCallOptions())
     assertThat(res2.oldValue).isEqualTo(1)
     assertThat(res2.newValue).isEqualTo(3)
   }

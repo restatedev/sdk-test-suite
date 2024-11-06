@@ -20,14 +20,12 @@ import dev.restate.sdktesting.infra.*
 import java.net.URL
 import java.util.*
 import java.util.concurrent.TimeUnit
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
-import org.awaitility.kotlin.until
-import org.awaitility.kotlin.untilAsserted
+import org.awaitility.kotlin.withAlias
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
@@ -86,17 +84,20 @@ class Ingress {
 
     // Await until the idempotency id is cleaned up and the next idempotency call updates the
     // counter again
-    await untilAsserted
+    await withAlias
+        "cleanup of the previous idempotent request" untilAsserted
         {
-          runBlocking {
-            assertThat(counterClient.add(2, requestOptions))
-                .returns(2, CounterUpdateResponse::oldValue)
-                .returns(4, CounterUpdateResponse::newValue)
-          }
+          assertThat(counterClient.add(2, requestOptions))
+              .returns(2, CounterUpdateResponse::oldValue)
+              .returns(4, CounterUpdateResponse::newValue)
         }
 
     // State in the counter service is now equal to 4
-    assertThat(counterClient.get()).isEqualTo(4L)
+    await withAlias
+        "Get returns 4 now" untilAsserted
+        {
+          assertThat(counterClient.get()).isEqualTo(4L)
+        }
   }
 
   @Test
@@ -128,10 +129,10 @@ class Ingress {
         requestOptions)
 
     // Wait for get
-    await untilAsserted { runBlocking { assertThat(counterClient.get()).isEqualTo(2) } }
+    await untilAsserted { assertThat(counterClient.get()).isEqualTo(2) }
 
     // Without request options this should be executed immediately and return 4
-    assertThat(counterClient.add(2))
+    assertThat(counterClient.add(2, idempotentCallOptions()))
         .returns(2, CounterUpdateResponse::oldValue)
         .returns(4, CounterUpdateResponse::newValue)
   }
@@ -159,10 +160,10 @@ class Ingress {
         .isEqualTo(secondInvocationSendStatus.invocationId)
 
     // Wait for get
-    await untilAsserted { runBlocking { assertThat(counterClient.get()).isEqualTo(2) } }
+    await untilAsserted { assertThat(counterClient.get()).isEqualTo(2) }
 
     // Without request options this should be executed immediately and return 4
-    assertThat(counterClient.add(2))
+    assertThat(counterClient.add(2, idempotentCallOptions()))
         .returns(2, CounterUpdateResponse::oldValue)
         .returns(4, CounterUpdateResponse::newValue)
   }
@@ -201,8 +202,8 @@ class Ingress {
 
     // Unblock
     val awakeableHolderClient = AwakeableHolderClient.fromClient(ingressClient, awakeableKey)
-    await until { runBlocking { awakeableHolderClient.hasAwakeable() } }
-    awakeableHolderClient.unlock(response)
+    await untilAsserted { assertThat(awakeableHolderClient.hasAwakeable()).isTrue }
+    awakeableHolderClient.unlock(response, idempotentCallOptions())
 
     // Attach should be completed
     assertThat(blockedFut.get()).isEqualTo(AwakeableResultResponse(response))
@@ -248,8 +249,8 @@ class Ingress {
 
     // Unblock
     val awakeableHolderClient = AwakeableHolderClient.fromClient(ingressClient, awakeableKey)
-    await until { runBlocking { awakeableHolderClient.hasAwakeable() } }
-    awakeableHolderClient.unlock(response)
+    await untilAsserted { assertThat(awakeableHolderClient.hasAwakeable()).isTrue }
+    awakeableHolderClient.unlock(response, idempotentCallOptions())
 
     // Attach should be completed
     assertThat(blockedFut.get()).isEqualTo(AwakeableResultResponse(response))
@@ -267,7 +268,7 @@ class Ingress {
 
     assertThat(
             TestUtilsServiceClient.fromClient(ingressClient)
-                .echoHeaders(CallRequestOptions().withHeader(headerName, headerValue)))
+                .echoHeaders(idempotentCallOptions().withHeader(headerName, headerValue)))
         .containsEntry(headerName, headerValue)
   }
 }

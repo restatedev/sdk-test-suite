@@ -14,12 +14,9 @@ import dev.restate.sdktesting.contracts.BlockAndWaitWorkflowClient
 import dev.restate.sdktesting.contracts.BlockAndWaitWorkflowDefinitions
 import dev.restate.sdktesting.infra.*
 import java.util.*
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
-import org.awaitility.kotlin.matches
-import org.awaitility.kotlin.untilCallTo
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
@@ -48,9 +45,9 @@ class WorkflowAPI {
     assertThat(sendResponse.status).isEqualTo(SendStatus.ACCEPTED)
 
     // Wait state is set
-    await untilCallTo { runBlocking { client.getState() } } matches { it != null }
+    await untilAsserted { assertThat(client.getState()).isNotBlank }
 
-    client.unblock("Till")
+    client.unblock("Till", idempotentCallOptions())
 
     assertThat(client.workflowHandle().attach()).isEqualTo("Till")
 
