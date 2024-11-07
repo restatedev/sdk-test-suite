@@ -17,6 +17,7 @@ import java.util.*
 import kotlinx.coroutines.test.runTest
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
+import org.awaitility.kotlin.withAlias
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
@@ -45,7 +46,7 @@ class WorkflowAPI {
     assertThat(sendResponse.status).isEqualTo(SendStatus.ACCEPTED)
 
     // Wait state is set
-    await untilAsserted { assertThat(client.getState()).isNotBlank }
+    await withAlias "state is not blank" untilAsserted { assertThat(client.getState()).isNotBlank }
 
     client.unblock("Till", idempotentCallOptions())
 

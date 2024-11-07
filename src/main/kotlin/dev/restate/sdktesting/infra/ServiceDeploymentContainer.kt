@@ -26,12 +26,14 @@ class ServiceDeploymentContainer(
     // we set the pull policy to default as usually the service image is local
     withImagePullPolicy(PullPolicy.defaultPolicy())
 
-    withEnv("PORT", "9080")
     withEnv(envs)
-    networkAliases = ArrayList()
-    this.network = network
-    withNetworkAliases(hostname)
+    withEnv("PORT", "9080")
     withEnv(RESTATE_URI_ENV, restateURI)
+
+    this.network = network
+    this.networkAliases = arrayListOf(hostname)
+    withCreateContainerCmdModifier { it.withHostName(hostname) }
+
     withStartupAttempts(3)
   }
 
