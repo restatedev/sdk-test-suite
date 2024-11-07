@@ -18,11 +18,16 @@ import dev.restate.sdktesting.infra.runtimeconfig.RestateConfigSchema
 import java.io.File
 import java.net.URI
 import java.net.http.HttpClient
+import java.net.http.HttpRequest
+import java.net.http.HttpResponse.BodyHandlers
 import java.nio.file.Path
+import java.nio.file.Paths
 import java.util.*
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.toJavaDuration
 import org.apache.logging.log4j.CloseableThreadContext
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.ThreadContext
@@ -36,6 +41,7 @@ import org.testcontainers.shaded.com.github.dockerjava.core.DockerClientConfig
 
 class RestateDeployer
 private constructor(
+    private val testReportDir: String,
     private val config: RestateDeployerConfig,
     private val serviceSpecs: List<ServiceSpec>,
     private val additionalContainers: Map<String, GenericContainer<*>>,
@@ -103,7 +109,7 @@ private constructor(
       this.copyToContainer += (name to Transferable.of(value))
     }
 
-    fun build(): RestateDeployer {
+    fun build(testReportDir: String): RestateDeployer {
       val defaultLogFilters =
           mapOf(
               "restate_invoker" to "trace",
@@ -124,6 +130,7 @@ private constructor(
               }
 
       return RestateDeployer(
+          testReportDir,
           config,
           serviceEndpoints,
           additionalContainers,
@@ -185,7 +192,7 @@ private constructor(
     }
   }
 
-  fun deployAll(testReportDir: String) {
+  fun deployAll() {
     LOG.info("Writing container logs to {}", testReportDir)
 
     // This generates the network down the hood
@@ -359,6 +366,13 @@ private constructor(
   }
 
   private fun teardownAll() {
+    // Before teardown, we optimistically try to dump some info about the invocations to files
+    if (runtimeContainers[0].isRunning) {
+      dumpSQLTable("sys_invocation")
+      dumpSQLTable("sys_journal")
+      dumpSQLTable("state")
+    }
+
     if (config.retainAfterEnd) {
       LOG.info("Press a button to cleanup the test environment. Deployed network: {}", network.id)
       System.`in`.read()
@@ -369,6 +383,32 @@ private constructor(
     teardownServices()
     network.close()
     LOG.info("Docker environment cleaned up")
+  }
+
+  internal fun dumpSQLTable(tableName: String) {
+    try {
+      val client = HttpClient.newHttpClient()
+      val request =
+          HttpRequest.newBuilder()
+              .uri(
+                  URI.create(
+                      "http://localhost:${getContainerPort(RESTATE_RUNTIME, RUNTIME_ADMIN_ENDPOINT_PORT)}/query"))
+              .header("accept", "application/json")
+              .header("content-type", "application/json")
+              .POST(
+                  HttpRequest.BodyPublishers.ofString(
+                      """{"query": "SELECT * FROM ${tableName}"}"""))
+              .timeout(10.seconds.toJavaDuration())
+              .build()
+
+      val response =
+          client.send(
+              request, BodyHandlers.ofFile(Paths.get(testReportDir, "${tableName}_dump.json")))
+
+      LOG.info("Dumped SQL table $tableName to ${response.body()}")
+    } catch (e: Throwable) {
+      LOG.warn("Error when trying to dump SQL table $tableName", e)
+    }
   }
 
   internal fun getContainerPort(hostName: String, port: Int): Int {

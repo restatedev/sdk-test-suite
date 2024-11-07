@@ -16,9 +16,10 @@ class RestateDeployerExtension(private val deployerFactory: RestateDeployer.Buil
   override fun beforeAll(context: ExtensionContext) {
     val builder = RestateDeployer.builder()
     deployerFactory.invoke(builder)
-    val deployer = builder.build()
+    val deployer =
+        builder.build(
+            RestateDeployer.reportDirectory(getReportPath(context), context.requiredTestClass))
     context.getStore(NAMESPACE).put(DEPLOYER_KEY, deployer)
-    deployer.deployAll(
-        RestateDeployer.reportDirectory(getReportPath(context), context.requiredTestClass))
+    deployer.deployAll()
   }
 }
