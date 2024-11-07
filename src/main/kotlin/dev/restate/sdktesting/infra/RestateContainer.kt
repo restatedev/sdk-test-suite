@@ -127,6 +127,8 @@ class RestateContainer(
     CloseableThreadContext.put("containerHostname", hostname).use {
       withImagePullPolicy(config.imagePullPolicy.toTestContainersImagePullPolicy())
 
+      withEnv("RESTATE_NETWORKING__HTTP2_KEEP_ALIVE_INTERVAL", "4s")
+      withEnv("RESTATE_NETWORKING__HTTP2_KEEP_ALIVE_TIMEOUT", "20s")
       withEnv(envs)
       // These envs should not be overriden by envs
       withEnv("RESTATE_ADMIN__BIND_ADDRESS", "0.0.0.0:$RUNTIME_ADMIN_ENDPOINT_PORT")
