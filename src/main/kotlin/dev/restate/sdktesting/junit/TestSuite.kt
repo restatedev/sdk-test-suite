@@ -79,6 +79,13 @@ class TestSuite(
               "junit.jupiter.execution.timeout.lifecycle.method.default", "360m")
     }
 
+    // Reduce parallelism in three nodes setup
+    if (restateDeployerConfig.restateNodes > 1 && parallel) {
+      builder =
+          builder.configurationParameter(
+              "junit.jupiter.execution.parallel.config.dynamic.factor", "0.5")
+    }
+
     val request = builder.build()
 
     // Configure listeners
