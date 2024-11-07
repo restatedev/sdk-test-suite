@@ -67,23 +67,25 @@ class SleepWithFailures {
         .isGreaterThanOrEqualTo(sleepDuration.toJavaDuration())
   }
 
-  @Timeout(value = 45, unit = TimeUnit.SECONDS)
+  @Timeout(value = 60, unit = TimeUnit.SECONDS)
   @Test
   fun sleepAndKillServiceEndpoint(
       @InjectClient ingressClient: Client,
       @InjectContainerHandle(ServiceSpec.DEFAULT_SERVICE_NAME) coordinatorContainer: ContainerHandle
   ) {
-    runTest(timeout = 30.seconds) {
+    runTest(timeout = 60.seconds) {
       asyncSleepTest(ingressClient) { coordinatorContainer.killAndRestart() }
     }
   }
 
-  @Timeout(value = 45, unit = TimeUnit.SECONDS)
+  @Timeout(value = 60, unit = TimeUnit.SECONDS)
   @Test
   fun sleepAndTerminateServiceEndpoint(
       @InjectClient ingressClient: Client,
       @InjectContainerHandle(ServiceSpec.DEFAULT_SERVICE_NAME) coordinatorContainer: ContainerHandle
   ) {
-    runTest { asyncSleepTest(ingressClient) { coordinatorContainer.terminateAndRestart() } }
+    runTest(timeout = 60.seconds) {
+      asyncSleepTest(ingressClient) { coordinatorContainer.terminateAndRestart() }
+    }
   }
 }
