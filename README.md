@@ -20,7 +20,7 @@ Check as example: https://github.com/restatedev/sdk-python/blob/main/.github/wor
 
 ## Running locally
 
-You need a JVM >= 17, and the test tool. You can get the test tool from the [releases page](https://github.com/restatedev/sdk-test-suite/releases). If you're investigating a CI failure, you might need the exact tool version the CI is currently using (which is usually printed in the title of the CI task).
+You need a JVM >= 21, and the test tool. You can get the test tool from the [releases page](https://github.com/restatedev/sdk-test-suite/releases). If you're investigating a CI failure, you might need the exact tool version the CI is currently using (which is usually printed in the title of the CI task).
 
 To run all the tests:
 
