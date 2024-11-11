@@ -151,8 +151,7 @@ Run test suite, executing the service as container.
       val cliOptionFilter =
           filter?.testName?.let {
             listOf(ClassNameFilter.includeClassNamePatterns(testClassNameToFQCN(it)))
-          }
-              ?: emptyList<Filter<*>>()
+          } ?: emptyList<Filter<*>>()
 
       val report =
           testSuite.runTests(

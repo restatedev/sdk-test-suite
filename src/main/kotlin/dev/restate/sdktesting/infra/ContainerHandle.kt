@@ -95,8 +95,7 @@ internal constructor(
           dockerClient.inspectContainerCmd(containerId).exec()
         }
         .state
-        .running
-        ?: false
+        .running ?: false
   }
 
   fun getMappedPort(port: Int): Int? {

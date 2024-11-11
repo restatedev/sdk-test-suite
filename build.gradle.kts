@@ -99,7 +99,9 @@ spotless {
 tasks.named("check") { dependsOn("checkLicense") }
 
 licenseReport {
-  renderers = arrayOf(com.github.jk1.license.render.CsvReportRenderer())
+  renderers =
+      arrayOf<com.github.jk1.license.render.ReportRenderer>(
+          com.github.jk1.license.render.CsvReportRenderer())
 
   excludeBoms = true
 
