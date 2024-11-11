@@ -59,7 +59,7 @@ dependencies {
   implementation(libs.awaitility)
 }
 
-kotlin { jvmToolchain(17) }
+kotlin { jvmToolchain(21) }
 
 val generatedJ2SPDir = layout.buildDirectory.dir("generated/j2sp")
 
