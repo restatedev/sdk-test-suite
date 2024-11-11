@@ -115,6 +115,8 @@ private constructor(
               "restate_invoker" to "trace",
               "restate_ingress_http" to "trace",
               "restate_ingress_kafka" to "trace",
+              "restate_log_server" to "trace",
+              "restate_bifrost" to "trace",
               "restate_core::partitions" to "trace",
               "restate" to "debug")
       val defaultLog =
