@@ -71,7 +71,7 @@ dependencyResolutionManagement {
       library("kotlinx-coroutines-test", "org.jetbrains.kotlinx", "kotlinx-coroutines-test")
           .version("1.8.1")
 
-      version("ksp", "2.0.0-1.0.23")
+      version("ksp", "2.0.21-1.0.25")
       library("symbol-processing-api", "com.google.devtools.ksp", "symbol-processing-api")
           .versionRef("ksp")
       plugin("ksp", "com.google.devtools.ksp").versionRef("ksp")

@@ -1,14 +1,14 @@
 plugins {
   application
-  kotlin("jvm") version "2.0.0"
-  kotlin("plugin.serialization") version "2.0.0"
+  kotlin("jvm") version "2.0.21"
+  kotlin("plugin.serialization") version "2.0.21"
 
   alias(libs.plugins.ksp)
-  id("org.jsonschema2pojo") version "1.2.1"
+  id("org.jsonschema2pojo") version "1.2.2"
 
-  id("com.diffplug.spotless") version "6.22.0"
-  id("com.github.johnrengelman.shadow") version "8.1.1"
-  id("com.github.jk1.dependency-license-report") version "2.8"
+  id("com.diffplug.spotless") version "6.25.0"
+  id("com.gradleup.shadow") version "8.3.5"
+  id("com.github.jk1.dependency-license-report") version "2.9"
 }
 
 group = "dev.restate.sdktesting"
