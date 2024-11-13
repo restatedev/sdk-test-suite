@@ -38,7 +38,11 @@ class KillInvocation {
 
   @Test
   fun kill(@InjectClient ingressClient: Client, @InjectMetaURL metaURL: URL) = runTest {
-    val id = KillTestRunnerClient.fromClient(ingressClient).send().startCallTree().invocationId
+    val id =
+        KillTestRunnerClient.fromClient(ingressClient)
+            .send()
+            .startCallTree(idempotentCallOptions())
+            .invocationId
     val awakeableHolderClient = AwakeableHolderClient.fromClient(ingressClient, "kill")
     // With this synchronization point we make sure the call tree has been built before killing it.
     await withAlias
