@@ -65,7 +65,7 @@ class CancelInvocation {
 
     // The termination signal might arrive before the blocking call to the cancel singleton was
     // made, so we need to retry.
-    await.ignoreException(TimeoutCancellationException::class.java) withAlias
+    await withAlias
         "verify test" untilAsserted
         {
           client.terminateInvocation(id, TerminationMode.CANCEL)

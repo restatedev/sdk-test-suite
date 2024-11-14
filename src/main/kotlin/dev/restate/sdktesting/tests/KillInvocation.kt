@@ -54,7 +54,14 @@ class KillInvocation {
 
     // Kill the invocation
     val client = InvocationApi(ApiClient().setHost(metaURL.host).setPort(metaURL.port))
-    client.terminateInvocation(id, TerminationMode.KILL)
+
+    // The termination signal might arrive before the blocking call to the cancel singleton was
+    // made, so we need to retry.
+    await withAlias
+        "verify test" untilAsserted
+        {
+          client.terminateInvocation(id, TerminationMode.KILL)
+        }
 
     await withAlias
         "singleton service is unlocked after killing the call tree" untilAsserted
