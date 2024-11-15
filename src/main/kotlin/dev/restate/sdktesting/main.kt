@@ -57,6 +57,9 @@ class RestateSdkTestSuite : CliktCommand() {
     // The default keep alive time is way too long, and this is a problem when we stop and restart
     // containers.
     System.setProperty("jdk.httpclient.keepalive.timeout", "5")
+    // The health check strategy uses the HttpUrlConnection which has no connect timeout by default.
+    // Could have caused the health check to hang indefinitely.
+    System.setProperty("sun.net.client.defaultConnectTimeout", "5000")
   }
 }
 
