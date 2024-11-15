@@ -128,7 +128,7 @@ class TestSuite(
             .newLayout("PatternLayout")
             .addAttribute(
                 "pattern",
-                "%-4r %-5p [%X{test_class}][%t]%notEmpty{[%X{containerHostname}]} %c{1.2.*} - %m%n")
+                "%d{ISO8601} %-5p [%X{test_class}][%t]%notEmpty{[%X{containerHostname}]} %c{1.2.*} - %m%n")
 
     val fileAppender =
         builder
