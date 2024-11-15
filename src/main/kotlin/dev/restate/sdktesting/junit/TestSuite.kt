@@ -13,6 +13,7 @@ import com.github.ajalt.mordant.terminal.Terminal
 import dev.restate.sdktesting.infra.BaseRestateDeployerExtension
 import dev.restate.sdktesting.infra.getGlobalConfig
 import dev.restate.sdktesting.infra.registerGlobalConfig
+import dev.restate.sdktesting.junit.InjectLog4jContextListener.Companion.TEST_CLASS
 import java.io.PrintWriter
 import java.nio.file.Path
 import org.apache.logging.log4j.Level
@@ -130,25 +131,59 @@ class TestSuite(
                 "pattern",
                 "%d{ISO8601} %-5p [%X{test_class}][%t]%notEmpty{[%X{containerHostname}]} %c{1.2.*} - %m%n")
 
-    val fileAppender =
+    val testRunnerFileAppender =
         builder
-            .newAppender("log", "File")
+            .newAppender("testRunnerLog", "File")
             .addAttribute("fileName", reportDir.resolve("testrunner.log").toString())
             .add(layout)
+    val nullAppender = builder.newAppender("nullAppender", "Null")
+
+    val routing =
+        builder
+            .newAppender("routingAppender", "Routing")
+            // If you wanna try to figure out what's going on here:
+            // https://stackoverflow.com/questions/25114526/log4j2-how-to-write-logs-to-separate-files-for-each-user
+            .addComponent(
+                builder
+                    .newComponent("Routes")
+                    .addAttribute("pattern", "\${ctx:${TEST_CLASS}}")
+                    .addComponent(
+                        // Route for XML magicians
+                        builder
+                            .newComponent("Route")
+                            .addComponent(
+                                builder
+                                    .newAppender("testRunnerLog-\${ctx:${TEST_CLASS}}", "File")
+                                    .addAttribute(
+                                        "fileName",
+                                        "${reportDir}/\${ctx:${TEST_CLASS}}/testRunner.log")
+                                    .add(layout)))
+                    .addComponent(
+                        // Default route to noop (still for XML magicians)
+                        builder
+                            .newComponent("Route")
+                            .addAttribute("key", "\${ctx:${TEST_CLASS}}")
+                            .addAttribute("ref", "nullAppender")))
 
     val restateLogger =
         builder
             .newLogger("dev.restate", Level.DEBUG)
-            .add(builder.newAppenderRef("log"))
+            .add(builder.newAppenderRef("testRunnerLog"))
+            .add(builder.newAppenderRef("routingAppender"))
             .addAttribute("additivity", false)
 
     val testContainersLogger =
         builder
             .newLogger("org.testcontainers", Level.TRACE)
-            .add(builder.newAppenderRef("log"))
+            .add(builder.newAppenderRef("testRunnerLog"))
+            .add(builder.newAppenderRef("routingAppender"))
             .addAttribute("additivity", false)
 
-    val rootLogger = builder.newRootLogger(Level.WARN).add(builder.newAppenderRef("log"))
+    val rootLogger =
+        builder
+            .newRootLogger(Level.WARN)
+            .add(builder.newAppenderRef("testRunnerLog"))
+            .add(builder.newAppenderRef("routingAppender"))
 
     if (printToStdout) {
       val consoleAppender = builder.newAppender("stdout", "Console").add(layout)
@@ -158,7 +193,9 @@ class TestSuite(
       restateLogger.add(builder.newAppenderRef("stdout"))
     }
 
-    builder.add(fileAppender)
+    builder.add(testRunnerFileAppender)
+    builder.add(nullAppender)
+    builder.add(routing)
     builder.add(restateLogger)
     builder.add(testContainersLogger)
     builder.add(rootLogger)

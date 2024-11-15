@@ -30,7 +30,8 @@ class InjectLog4jContextListener(val suiteName: String) : TestExecutionListener 
 
   override fun executionStarted(testIdentifier: TestIdentifier) {
     if (testIdentifier.isContainer && testIdentifier.source.getOrNull() is ClassSource) {
-      ThreadContext.put(TEST_CLASS, describeTestIdentifier(suiteName, testPlan!!, testIdentifier))
+      ThreadContext.put(
+          TEST_CLASS, classSimpleName((testIdentifier.source.getOrNull() as ClassSource).className))
     }
   }
 
