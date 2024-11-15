@@ -269,10 +269,6 @@ private constructor(
                   CompletableFuture.runAsync(
                       {
                         CloseableThreadContext.put("containerHostname", container.hostname).use {
-                          if (container.hostname != RESTATE_RUNTIME) {
-                            Thread.sleep(5000)
-                            // Sleep first because of an internal init issue of the runtime
-                          }
                           LOG.debug(
                               "Restate container '${container.hostname}' using image '${config.restateContainerImage}' is starting")
                           container.dependsOn(containerDependencies).start()
