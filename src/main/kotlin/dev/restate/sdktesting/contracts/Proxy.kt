@@ -40,7 +40,8 @@ interface Proxy {
   // Bytes are encoded as array of numbers
   @Handler suspend fun call(context: Context, request: ProxyRequest): ByteArray
 
-  @Handler suspend fun oneWayCall(context: Context, request: ProxyRequest)
+  // Returns the invocation id of the call
+  @Handler suspend fun oneWayCall(context: Context, request: ProxyRequest): String
 
   @Handler suspend fun manyCalls(context: Context, requests: List<ManyCallRequest>)
 }
