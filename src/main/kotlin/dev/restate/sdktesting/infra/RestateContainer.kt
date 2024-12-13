@@ -88,7 +88,8 @@ class RestateContainer(
                 "RESTATE_CLUSTER_NAME" to clusterId,
                 "RESTATE_BIFROST__DEFAULT_PROVIDER" to "replicated",
                 "RESTATE_ROLES" to "[worker,admin,log-server]",
-                "RESTATE_METADATA_STORE_CLIENT__ADDRESS" to "http://$RESTATE_RUNTIME:5123")
+                "RESTATE_METADATA_STORE_CLIENT__ADDRESS" to
+                    "http://$RESTATE_RUNTIME:$RUNTIME_NODE_PORT")
 
         return listOf(
             RestateContainer(
