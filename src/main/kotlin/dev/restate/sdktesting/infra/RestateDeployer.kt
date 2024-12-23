@@ -169,7 +169,7 @@ private constructor(
           }
           .associate { it.second.first to (it.first to it.second.second) }
   private val runtimeContainers: List<RestateContainer> =
-      RestateContainer.bootstrapRestateCluster(
+      RestateContainer.createRestateContainers(
           config, network, runtimeContainerEnvs, configSchema, copyToContainer, config.restateNodes)
 
   private val deployedContainers: Map<String, ContainerHandle> =

@@ -63,7 +63,7 @@ class RestateContainer(
                             .build()))
             .withStartupTimeout(120.seconds.toJavaDuration())
 
-    fun bootstrapRestateCluster(
+    fun createRestateContainers(
         config: RestateDeployerConfig,
         network: Network,
         envs: Map<String, String>,
@@ -79,14 +79,17 @@ class RestateContainer(
         val leaderEnvs =
             mapOf<String, String>(
                 "RESTATE_CLUSTER_NAME" to clusterId,
-                "RESTATE_BIFROST__DEFAULT_PROVIDER" to "replicated",
                 "RESTATE_ALLOW_BOOTSTRAP" to "true",
+                "RESTATE_BIFROST__DEFAULT_PROVIDER" to "replicated",
+                "RESTATE_BIFROST__REPLICATED_LOGLET__DEFAULT_REPLICATION_PROPERTY" to "2",
                 "RESTATE_ROLES" to "[worker,log-server,admin,metadata-store]",
             )
         val followerEnvs =
             mapOf<String, String>(
                 "RESTATE_CLUSTER_NAME" to clusterId,
+                "RESTATE_ALLOW_BOOTSTRAP" to "false",
                 "RESTATE_BIFROST__DEFAULT_PROVIDER" to "replicated",
+                "RESTATE_BIFROST__REPLICATED_LOGLET__DEFAULT_REPLICATION_PROPERTY" to "2",
                 "RESTATE_ROLES" to "[worker,admin,log-server]",
                 "RESTATE_METADATA_STORE_CLIENT__ADDRESS" to
                     "http://$RESTATE_RUNTIME:$RUNTIME_NODE_PORT")
