@@ -134,6 +134,7 @@ class RestateContainer(
       // These envs should not be overriden by envs
       withEnv("RESTATE_ADMIN__BIND_ADDRESS", "0.0.0.0:$RUNTIME_ADMIN_ENDPOINT_PORT")
       withEnv("RESTATE_INGRESS__BIND_ADDRESS", "0.0.0.0:$RUNTIME_INGRESS_ENDPOINT_PORT")
+      withEnv("DO_NOT_TRACK", "true")
 
       this.network = network
       this.networkAliases = arrayListOf(hostname)
