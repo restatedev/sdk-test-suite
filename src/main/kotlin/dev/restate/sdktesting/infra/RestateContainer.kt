@@ -71,60 +71,50 @@ class RestateContainer(
         copyToContainer: List<Pair<String, Transferable>>,
         nodes: Int
     ): List<RestateContainer> {
-      if (nodes == 1) {
-        return listOf(
-            RestateContainer(config, RESTATE_RUNTIME, network, envs, configSchema, copyToContainer))
-      } else {
-        val clusterId = UUID.randomUUID().toString()
-        val leaderEnvs =
-            mapOf<String, String>(
-                "RESTATE_CLUSTER_NAME" to clusterId,
-                "RESTATE_ALLOW_BOOTSTRAP" to "true",
-                "RESTATE_BIFROST__DEFAULT_PROVIDER" to "replicated",
-                "RESTATE_BIFROST__REPLICATED_LOGLET__DEFAULT_REPLICATION_PROPERTY" to "2",
-                "RESTATE_ROLES" to "[worker,log-server,admin,metadata-store]",
-            )
-        val followerEnvs =
-            mapOf<String, String>(
-                "RESTATE_CLUSTER_NAME" to clusterId,
-                "RESTATE_ALLOW_BOOTSTRAP" to "false",
-                "RESTATE_BIFROST__DEFAULT_PROVIDER" to "replicated",
-                "RESTATE_BIFROST__REPLICATED_LOGLET__DEFAULT_REPLICATION_PROPERTY" to "2",
-                "RESTATE_ROLES" to "[worker,admin,log-server]",
-                "RESTATE_METADATA_STORE_CLIENT__TYPE" to "embedded",
-                "RESTATE_METADATA_STORE_CLIENT__ADDRESSES" to
-                    "[http://$RESTATE_RUNTIME:$RUNTIME_NODE_PORT]")
+      val clusterId = UUID.randomUUID().toString()
+      val replicationProperty = if (nodes == 1) 1 else 2
+      val effectiveEnvs =
+          envs +
+              mapOf<String, String>(
+                  "RESTATE_CLUSTER_NAME" to clusterId,
+                  "RESTATE_ALLOW_BOOTSTRAP" to "false",
+                  "RESTATE_BIFROST__DEFAULT_PROVIDER" to "replicated",
+                  "RESTATE_BIFROST__REPLICATED_LOGLET__DEFAULT_REPLICATION_PROPERTY" to
+                      replicationProperty.toString(),
+                  "RESTATE_ROLES" to "[worker,log-server,admin,metadata-server]",
+                  "RESTATE_METADATA_STORE__TYPE" to "embedded",
+                  "RESTATE_METADATA_STORE_CLIENT__TYPE" to "embedded",
+                  "RESTATE_METADATA_STORE_CLIENT__ADDRESSES" to
+                      "[http://$RESTATE_RUNTIME:$RUNTIME_NODE_PORT]",
+              )
 
-        return listOf(
+      return listOf(
+          RestateContainer(
+              config,
+              // First node has the default hostname as usual, this makes sure containers
+              // port injection annotations still work.
+              RESTATE_RUNTIME,
+              network,
+              effectiveEnvs +
+                  mapOf(
+                      "RESTATE_ALLOW_BOOTSTRAP" to "true",
+                      "RESTATE_ADVERTISED_ADDRESS" to "http://$RESTATE_RUNTIME:$RUNTIME_NODE_PORT"),
+              configSchema,
+              copyToContainer)) +
+          (1.rangeUntil(nodes)).map {
             RestateContainer(
                 config,
-                // Leader will just have the default hostname as usual, this makes sure containers
-                // port injection annotations still work.
-                RESTATE_RUNTIME,
+                "$RESTATE_RUNTIME-$it",
                 network,
-                envs +
-                    leaderEnvs +
+                effectiveEnvs +
                     mapOf(
                         "RESTATE_ADVERTISED_ADDRESS" to
-                            "http://$RESTATE_RUNTIME:$RUNTIME_NODE_PORT"),
+                            "http://$RESTATE_RUNTIME-$it:$RUNTIME_NODE_PORT"),
                 configSchema,
-                copyToContainer)) +
-            (1.rangeUntil(config.restateNodes)).map {
-              RestateContainer(
-                  config,
-                  "$RESTATE_RUNTIME-$it",
-                  network,
-                  envs +
-                      followerEnvs +
-                      mapOf(
-                          "RESTATE_ADVERTISED_ADDRESS" to
-                              "http://$RESTATE_RUNTIME-$it:$RUNTIME_NODE_PORT"),
-                  configSchema,
-                  copyToContainer,
-                  // Only the leader gets the privilege of local port forwarding
-                  enableLocalPortForward = false)
-            }
-      }
+                copyToContainer,
+                // Only the leader gets the privilege of local port forwarding
+                enableLocalPortForward = false)
+          }
     }
   }
 
