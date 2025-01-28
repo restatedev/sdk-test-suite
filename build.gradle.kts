@@ -1,3 +1,6 @@
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import org.openapitools.generator.gradle.plugin.tasks.GenerateTask
+
 plugins {
   application
   kotlin("jvm") version "2.0.21"
@@ -5,6 +8,7 @@ plugins {
 
   alias(libs.plugins.ksp)
   id("org.jsonschema2pojo") version "1.2.2"
+  alias(libs.plugins.openapi.generator)
 
   id("com.diffplug.spotless") version "6.25.0"
   id("com.gradleup.shadow") version "8.3.5"
@@ -22,10 +26,12 @@ repositories {
 }
 
 dependencies {
+  compileOnly(libs.tomcat.annotations)
+  compileOnly(libs.google.findbugs.jsr305)
+
   implementation(libs.clikt)
   implementation(libs.mordant)
 
-  implementation(libs.restate.admin)
   implementation(libs.restate.sdk.common)
 
   ksp(libs.restate.sdk.api.kotlin.gen)
@@ -53,6 +59,7 @@ dependencies {
 
   implementation(libs.jackson.core)
   implementation(libs.jackson.databind)
+  implementation(libs.jackson.datetime)
   implementation(libs.jackson.toml)
 
   implementation(libs.assertj)
@@ -62,8 +69,13 @@ dependencies {
 kotlin { jvmToolchain(21) }
 
 val generatedJ2SPDir = layout.buildDirectory.dir("generated/j2sp")
+val generatedOpenapi = layout.buildDirectory.dir("generated/openapi")
 
-sourceSets { main { java.srcDir(generatedJ2SPDir) } }
+sourceSets {
+  main {
+    java.srcDirs(generatedJ2SPDir, layout.buildDirectory.dir("generated/openapi/src/main/java"))
+  }
+}
 
 jsonSchema2Pojo {
   setSource(files("$projectDir/src/main/json"))
@@ -76,8 +88,33 @@ jsonSchema2Pojo {
   generateBuilders = true
 }
 
+// Configure openapi generator
+openApiGenerate {
+  inputSpec.set("$projectDir/src/main/openapi/admin.json")
+  outputDir.set(generatedOpenapi.get().toString())
+
+  // Java 9+ HTTP Client using Jackson
+  generatorName.set("java")
+  library.set("native")
+
+  // Package names
+  invokerPackage.set("dev.restate.admin.client")
+  apiPackage.set("dev.restate.admin.api")
+  modelPackage.set("dev.restate.admin.model")
+
+  // We don't need these
+  generateApiTests.set(false)
+  generateApiDocumentation.set(false)
+  generateModelTests.set(false)
+  generateModelDocumentation.set(false)
+
+  configOptions.put("openApiNullable", "false")
+}
+
 tasks {
   getByName("compileKotlin") { dependsOn(generateJsonSchema2Pojo) }
+
+  withType<KotlinCompile>().configureEach { dependsOn(withType<GenerateTask>()) }
 
   test { useJUnitPlatform() }
 }

@@ -10,7 +10,7 @@ package dev.restate.sdktesting.tests
 
 import dev.restate.admin.api.InvocationApi
 import dev.restate.admin.client.ApiClient
-import dev.restate.admin.model.TerminationMode
+import dev.restate.admin.model.DeletionMode
 import dev.restate.sdk.client.Client
 import dev.restate.sdktesting.contracts.*
 import dev.restate.sdktesting.infra.*
@@ -68,7 +68,7 @@ class CancelInvocation {
     await withAlias
         "verify test" untilAsserted
         {
-          client.terminateInvocation(id, TerminationMode.CANCEL)
+          client.deleteInvocation(id, DeletionMode.CANCEL)
           withTimeout(1.seconds) { cancelTestClient.verifyTest() }
         }
 

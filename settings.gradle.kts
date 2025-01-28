@@ -3,16 +3,9 @@ plugins { id("org.gradle.toolchains.foojay-resolver-convention") version "0.8.0"
 rootProject.name = "restate-sdk-test-suite"
 
 dependencyResolutionManagement {
-  repositories {
-    mavenCentral()
-    // OSSRH Snapshots repo
-    maven { url = uri("https://s01.oss.sonatype.org/content/repositories/snapshots/") }
-  }
-
   versionCatalogs {
     create("libs") {
       library("restate-sdk-common", "dev.restate", "sdk-common").versionRef("restate")
-      library("restate-admin", "dev.restate", "admin-client").versionRef("restate")
       library("restate-sdk-api-kotlin", "dev.restate", "sdk-api-kotlin").versionRef("restate")
       library("restate-sdk-api-kotlin-gen", "dev.restate", "sdk-api-kotlin-gen")
           .versionRef("restate")
