@@ -8,13 +8,18 @@
 // https://github.com/restatedev/sdk-test-suite/blob/main/LICENSE
 package dev.restate.sdktesting.tests
 
-import dev.restate.sdk.client.Client
+import dev.restate.sdk.client.DefaultClient
 import dev.restate.sdktesting.contracts.CounterClient
 import dev.restate.sdktesting.contracts.CounterDefinitions
 import dev.restate.sdktesting.infra.*
+import java.net.http.HttpClient
 import java.util.concurrent.TimeUnit
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.toJavaDuration
 import kotlinx.coroutines.test.runTest
 import org.assertj.core.api.Assertions.assertThat
+import org.awaitility.kotlin.await
+import org.awaitility.kotlin.withAlias
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Timeout
@@ -35,25 +40,38 @@ class KillRuntime {
   @Timeout(value = 60, unit = TimeUnit.SECONDS)
   @Test
   fun startAndKillRuntimeRetainsTheState(
-      @InjectClient ingressClient: Client,
       @InjectContainerHandle(RESTATE_RUNTIME) runtimeHandle: ContainerHandle
   ) = runTest {
-    var counterClient = CounterClient.fromClient(ingressClient, "my-key")
-
-    val res1 = counterClient.add(1, idempotentCallOptions())
+    // We instantiate the client manually, in order to close it before killing and restarting
+    var httpClient = HttpClient.newHttpClient()
+    var ingressClient =
+        DefaultClient.of(
+            httpClient, "http://127.0.0.1:${runtimeHandle.getMappedPort(8080)!!}", HashMap())
+    val res1 = CounterClient.fromClient(ingressClient, "my-key").add(1, idempotentCallOptions())
     assertThat(res1.oldValue).isEqualTo(0)
     assertThat(res1.newValue).isEqualTo(1)
+
+    // Close the HTTP client to avoid keeping around dangling connections.
+    httpClient.close()
 
     // Stop and start the runtime
     runtimeHandle.killAndRestart()
 
-    // We need a new client, because on restarts docker might mess up the exposed ports. NotFunky
-    // but true...
-    counterClient =
-        CounterClient.fromClient(
-            Client.connect("http://127.0.0.1:${runtimeHandle.getMappedPort(8080)!!}"), "my-key")
-    val res2 = counterClient.add(2, idempotentCallOptions())
-    assertThat(res2.oldValue).isEqualTo(1)
-    assertThat(res2.newValue).isEqualTo(3)
+    await withAlias
+        "second add" untilAsserted
+        {
+          // We need a new client, because on restarts docker might mess up the exposed ports.
+          // NotFunky
+          // but true...
+          val httpClient =
+              HttpClient.newBuilder().connectTimeout(5.seconds.toJavaDuration()).build()
+          val ingressClient =
+              DefaultClient.of(
+                  httpClient, "http://127.0.0.1:${runtimeHandle.getMappedPort(8080)!!}", HashMap())
+          val res2 =
+              CounterClient.fromClient(ingressClient, "my-key").add(2, idempotentCallOptions())
+          assertThat(res2.oldValue).isEqualTo(1)
+          assertThat(res2.newValue).isEqualTo(3)
+        }
   }
 }
