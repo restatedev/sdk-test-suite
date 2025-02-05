@@ -13,6 +13,8 @@ import dev.restate.sdktesting.contracts.CounterClient
 import dev.restate.sdktesting.contracts.CounterDefinitions
 import dev.restate.sdktesting.infra.*
 import java.net.http.HttpClient
+import java.time.Duration
+import java.time.temporal.ChronoUnit
 import java.util.concurrent.TimeUnit
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
@@ -57,7 +59,7 @@ class KillRuntime {
     // Stop and start the runtime
     runtimeHandle.killAndRestart()
 
-    await withAlias
+    await.timeout(Duration.of(60, ChronoUnit.SECONDS)) withAlias
         "second add" untilAsserted
         {
           // We need a new client, because on restarts docker might mess up the exposed ports.
