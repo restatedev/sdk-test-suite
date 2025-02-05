@@ -14,7 +14,7 @@ object TestSuites {
       TestSuite(
           "threeNodes",
           mapOf(
-              "RESTATE_BOOTSTRAP_NUM_PARTITIONS" to "4",
+              "RESTATE_DEFAULT_NUM_PARTITIONS" to "4",
           ),
           "(none() | always-suspending) & !only-single-node",
           3)
@@ -28,7 +28,7 @@ object TestSuites {
           "threeNodesAlwaysSuspending",
           mapOf(
               "RESTATE_WORKER__INVOKER__INACTIVITY_TIMEOUT" to "0s",
-              "RESTATE_BOOTSTRAP_NUM_PARTITIONS" to "4",
+              "RESTATE_DEFAULT_NUM_PARTITIONS" to "4",
           ),
           "(always-suspending | only-always-suspending) & !only-single-node",
           3)
@@ -36,7 +36,7 @@ object TestSuites {
       TestSuite(
           "singleThreadSinglePartition",
           mapOf(
-              "RESTATE_BOOTSTRAP_NUM_PARTITIONS" to "1",
+              "RESTATE_DEFAULT_NUM_PARTITIONS" to "1",
               "RESTATE_DEFAULT_THREAD_POOL_SIZE" to "1",
           ),
           "none() | always-suspending | stop-runtime")

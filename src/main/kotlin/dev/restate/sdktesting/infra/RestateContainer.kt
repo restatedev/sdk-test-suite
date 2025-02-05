@@ -77,14 +77,13 @@ class RestateContainer(
           envs +
               mapOf<String, String>(
                   "RESTATE_CLUSTER_NAME" to clusterId,
-                  "RESTATE_ALLOW_BOOTSTRAP" to "false",
+                  "RESTATE_AUTO_PROVISION" to "false",
                   "RESTATE_BIFROST__DEFAULT_PROVIDER" to "replicated",
-                  "RESTATE_BIFROST__REPLICATED_LOGLET__DEFAULT_REPLICATION_PROPERTY" to
+                  "RESTATE_BIFROST__REPLICATED_LOGLET__DEFAULT_LOG_REPLICATION" to
                       replicationProperty.toString(),
                   "RESTATE_ROLES" to "[worker,log-server,admin,metadata-server]",
-                  "RESTATE_METADATA_STORE__TYPE" to "embedded",
-                  "RESTATE_METADATA_STORE_CLIENT__TYPE" to "embedded",
-                  "RESTATE_METADATA_STORE_CLIENT__ADDRESSES" to
+                  "RESTATE_METADATA_SERVER__TYPE" to "replicated",
+                  "RESTATE_METADATA_CLIENT__ADDRESSES" to
                       "[http://$RESTATE_RUNTIME:$RUNTIME_NODE_PORT]",
               )
 
@@ -97,7 +96,7 @@ class RestateContainer(
               network,
               effectiveEnvs +
                   mapOf(
-                      "RESTATE_ALLOW_BOOTSTRAP" to "true",
+                      "RESTATE_AUTO_PROVISION" to "true",
                       "RESTATE_ADVERTISED_ADDRESS" to "http://$RESTATE_RUNTIME:$RUNTIME_NODE_PORT"),
               configSchema,
               copyToContainer)) +
