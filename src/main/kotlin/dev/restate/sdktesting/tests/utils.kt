@@ -10,12 +10,16 @@ package dev.restate.sdktesting.tests
 
 import dev.restate.sdk.client.CallRequestOptions
 import java.util.UUID
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
 import org.apache.logging.log4j.LogManager
-import org.apache.logging.log4j.ThreadContext
+import org.apache.logging.log4j.kotlin.additionalLoggingContext
 import org.awaitility.core.ConditionFactory
 
 fun idempotentCallOptions(): CallRequestOptions {
@@ -25,14 +29,14 @@ fun idempotentCallOptions(): CallRequestOptions {
 private val LOG = LogManager.getLogger("dev.restate.sdktesting.tests")
 
 suspend infix fun ConditionFactory.untilAsserted(fn: suspend () -> Unit) {
-  val ctx = ThreadContext.getContext()
   withContext(currentCoroutineContext() + Dispatchers.IO) {
     val coroutineContext = currentCoroutineContext()
     this@untilAsserted.ignoreExceptions()
-        .logging {
-          ThreadContext.putAll(ctx)
-          LOG.info(it)
-        }
+        .logging { LOG.info(it) }
+        .pollInSameThread()
         .untilAsserted { runBlocking(coroutineContext) { fn() } }
   }
 }
+
+fun runTest(timeout: Duration = 60.seconds, testBody: suspend TestScope.() -> Unit) =
+    runTest(context = additionalLoggingContext(), timeout = timeout, testBody = testBody)

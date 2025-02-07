@@ -175,7 +175,7 @@ private constructor(
 
   private val deployedContainers: Map<String, ContainerHandle> =
       (runtimeContainers.map {
-            it.hostname to ContainerHandle(it, restartWaitStrategy = { it.waitStartup() })
+            it.hostname to ContainerHandle(it, afterRestartWaitStrategy = { it.waitStartup() })
           } +
               serviceContainers.map { it.key to ContainerHandle(it.value.second) } +
               additionalContainers.map { it.key to ContainerHandle(it.value) })

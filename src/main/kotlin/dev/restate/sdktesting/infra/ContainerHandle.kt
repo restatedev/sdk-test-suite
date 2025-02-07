@@ -22,8 +22,7 @@ import org.testcontainers.utility.LogUtils
 class ContainerHandle
 internal constructor(
     internal val container: GenericContainer<*>,
-    private val getMappedPort: (Int) -> Int? = { container.getMappedPort(it) },
-    private val restartWaitStrategy: () -> Unit = {},
+    private val afterRestartWaitStrategy: () -> Unit = {},
 ) {
 
   private val logger = LogManager.getLogger(ContainerHandle::class.java)
@@ -99,7 +98,7 @@ internal constructor(
   }
 
   fun getMappedPort(port: Int): Int? {
-    return this.getMappedPort.invoke(port)
+    return container.getMappedPort(port)
   }
 
   private fun postStart() {
@@ -115,7 +114,7 @@ internal constructor(
     }
 
     // Additional wait strategy for ports
-    restartWaitStrategy()
+    afterRestartWaitStrategy()
 
     logger.info("Container {} started and passed all the checks.", container.containerName)
   }

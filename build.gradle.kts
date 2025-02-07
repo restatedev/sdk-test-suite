@@ -48,6 +48,7 @@ dependencies {
   implementation(libs.log4j.api)
   implementation(libs.log4j.core)
   implementation(libs.log4j.slf4j)
+  implementation(libs.log4j.kotlin)
 
   implementation("org.apache.kafka:kafka-clients:3.5.0")
 

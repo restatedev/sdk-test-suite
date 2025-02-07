@@ -192,7 +192,6 @@ class RestateContainer(
 
   override fun getContainerInfo(): InspectContainerResponse {
     // We override container info to avoid getting outdated info when restarted
-    val containerId = this.containerId
-    return dockerClient.inspectContainerCmd(containerId).exec()
+    return currentContainerInfo
   }
 }

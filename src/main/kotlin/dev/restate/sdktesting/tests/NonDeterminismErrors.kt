@@ -15,7 +15,6 @@ import dev.restate.sdktesting.contracts.CounterClient
 import dev.restate.sdktesting.contracts.CounterDefinitions
 import dev.restate.sdktesting.contracts.NonDeterministicDefinitions
 import dev.restate.sdktesting.infra.*
-import kotlinx.coroutines.test.runTest
 import org.assertj.core.api.Assertions.*
 import org.awaitility.kotlin.await
 import org.awaitility.kotlin.withAlias

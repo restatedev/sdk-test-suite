@@ -14,7 +14,6 @@ import dev.restate.sdktesting.contracts.BlockAndWaitWorkflowClient
 import dev.restate.sdktesting.contracts.BlockAndWaitWorkflowDefinitions
 import dev.restate.sdktesting.infra.*
 import java.util.*
-import kotlinx.coroutines.test.runTest
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
 import org.awaitility.kotlin.withAlias
