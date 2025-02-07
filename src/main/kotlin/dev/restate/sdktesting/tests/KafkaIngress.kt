@@ -22,7 +22,6 @@ import dev.restate.sdktesting.infra.runtimeconfig.KafkaClusterOptions
 import dev.restate.sdktesting.infra.runtimeconfig.RestateConfigSchema
 import java.net.URL
 import java.util.*
-import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.apache.kafka.clients.producer.KafkaProducer

@@ -15,7 +15,6 @@ import dev.restate.sdktesting.contracts.FailingClient
 import dev.restate.sdktesting.contracts.FailingDefinitions
 import dev.restate.sdktesting.infra.*
 import java.util.*
-import kotlinx.coroutines.test.runTest
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Tag

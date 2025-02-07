@@ -13,7 +13,6 @@ import dev.restate.sdktesting.contracts.*
 import dev.restate.sdktesting.infra.*
 import java.time.Duration
 import java.util.UUID
-import kotlinx.coroutines.test.runTest
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Tag

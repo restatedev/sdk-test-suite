@@ -20,7 +20,6 @@ import dev.restate.sdktesting.infra.*
 import java.net.URL
 import java.util.*
 import java.util.concurrent.TimeUnit
-import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.assertj.core.api.Assertions.assertThat

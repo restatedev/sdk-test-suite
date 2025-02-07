@@ -18,7 +18,6 @@ import java.net.URL
 import java.util.*
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.*
-import kotlinx.coroutines.test.runTest
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
 import org.awaitility.kotlin.withAlias
