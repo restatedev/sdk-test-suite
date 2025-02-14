@@ -43,6 +43,11 @@ runs:
           printf "%s\n" $env >> $GITHUB_ENV
         done
 
+    # Pre-emptively pull the Kafka docker image, because it's slow and impedes the test execution
+    - name: Pull Kafka docker image
+      shell: bash
+      run: docker pull confluentinc/cp-kafka:7.1.0-1-ubi8
+
     - name: Run test suite
       env:
         RESTATE_CONTAINER_IMAGE: ${{ inputs.restateContainerImage }}
