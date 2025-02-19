@@ -21,10 +21,12 @@ import kotlinx.coroutines.*
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
 import org.awaitility.kotlin.withAlias
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.extension.RegisterExtension
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.EnumSource
 
+@Tag("always-suspending")
 class CancelInvocation {
   companion object {
     @RegisterExtension
