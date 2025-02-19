@@ -15,6 +15,9 @@ import dev.restate.sdktesting.infra.RestateDeployerExtension
 import dev.restate.sdktesting.infra.ServiceSpec
 import java.util.UUID
 import java.util.concurrent.TimeUnit
+import kotlin.system.measureNanoTime
+import kotlin.time.Duration.Companion.nanoseconds
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.assertj.core.api.Assertions.assertThat
@@ -78,24 +81,38 @@ class ServiceToServiceCommunication {
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
-  @Timeout(value = 20, unit = TimeUnit.SECONDS)
+  @Timeout(value = 30, unit = TimeUnit.SECONDS)
   @Tag("timers")
-  fun oneWayCallWithDelay(@InjectClient ingressClient: Client) = runTest {
-    val counterId = UUID.randomUUID().toString()
-    val proxyClient = ProxyClient.fromClient(ingressClient)
-    val counterClient = CounterClient.fromClient(ingressClient, counterId)
+  fun oneWayCallWithDelay(@InjectClient ingressClient: Client) =
+      runTest(timeout = 30.seconds) {
+        val counterId = UUID.randomUUID().toString()
+        val proxyClient = ProxyClient.fromClient(ingressClient)
+        val counterClient = CounterClient.fromClient(ingressClient, counterId)
 
-    for (i in 1..10) {
-      proxyClient.oneWayCall(
-          ProxyRequest(
-              CounterDefinitions.SERVICE_NAME,
-              counterId,
-              "add",
-              Json.encodeToString(1).encodeToByteArray(),
-              100),
-          idempotentCallOptions())
-    }
+        for (i in 1..10) {
+          proxyClient.oneWayCall(
+              ProxyRequest(
+                  CounterDefinitions.SERVICE_NAME,
+                  counterId,
+                  "add",
+                  Json.encodeToString(1).encodeToByteArray(),
+                  // This is a reasonably long time to avoid that the timeToAssert
+                  // generates too many false positives
+                  5000),
+              idempotentCallOptions())
+        }
 
-    await untilAsserted { assertThat(counterClient.get()).isEqualTo(10L) }
-  }
+        val elapsed = measureNanoTime {
+          await untilAsserted { assertThat(counterClient.get()).isEqualTo(10L) }
+        }
+
+        // This assert is checking two things:
+        // * That those proxied calls happened.
+        //    This can, of course, generate false positives if the creation of one way calls and the
+        // assert took more than 5 seconds
+        // * That the delay timer is respected BEFORE the queueing of the invocation,
+        //    otherwise this whole test should have taken at least 50 seconds, while the test
+        // timeout is 30 seconds.
+        assertThat(elapsed.nanoseconds).isGreaterThanOrEqualTo(5.seconds)
+      }
 }
