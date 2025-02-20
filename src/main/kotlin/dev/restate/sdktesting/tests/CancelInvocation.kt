@@ -12,6 +12,7 @@ import dev.restate.admin.api.InvocationApi
 import dev.restate.admin.client.ApiClient
 import dev.restate.admin.model.DeletionMode
 import dev.restate.sdk.client.Client
+import dev.restate.sdk.kotlin.KtSerdes
 import dev.restate.sdktesting.contracts.*
 import dev.restate.sdktesting.infra.*
 import java.net.URL
@@ -36,13 +37,15 @@ class CancelInvocation {
               .withServices(
                   CancelTestRunnerDefinitions.SERVICE_NAME,
                   CancelTestBlockingServiceDefinitions.SERVICE_NAME,
-                  AwakeableHolderDefinitions.SERVICE_NAME))
+                  AwakeableHolderDefinitions.SERVICE_NAME,
+                  ProxyDefinitions.SERVICE_NAME,
+                  TestUtilsServiceDefinitions.SERVICE_NAME))
     }
   }
 
-  @ParameterizedTest(name = "cancel blocked invocation on {0}")
+  @ParameterizedTest(name = "cancel blocked invocation on {0} from Admin API")
   @EnumSource(value = BlockingOperation::class)
-  fun cancelInvocation(
+  fun cancelInvocationFromAdminAPI(
       blockingOperation: BlockingOperation,
       @InjectClient ingressClient: Client,
       @InjectMetaURL metaURL: URL,
@@ -79,5 +82,44 @@ class CancelInvocation {
         {
           blockingServiceClient.isUnlocked()
         }
+  }
+
+  @ParameterizedTest(name = "cancel blocked invocation on {0} from Context")
+  @EnumSource(value = BlockingOperation::class)
+  fun cancelInvocationFromContext(
+      blockingOperation: BlockingOperation,
+      @InjectClient ingressClient: Client,
+  ) = runTest {
+    val key = UUID.randomUUID().toString()
+    val cancelTestClient = CancelTestRunnerClient.fromClient(ingressClient, key)
+    val blockingServiceClient = CancelTestBlockingServiceClient.fromClient(ingressClient, key)
+    val proxyClient = ProxyClient.fromClient(ingressClient)
+    val testUtilsClient = TestUtilsServiceClient.fromClient(ingressClient)
+
+    val id =
+        proxyClient.oneWayCall(
+            ProxyRequest(
+                serviceName = CancelTestRunnerDefinitions.SERVICE_NAME,
+                virtualObjectKey = key,
+                handlerName = "startTest",
+                message = KtSerdes.json<BlockingOperation>().serialize(blockingOperation)))
+
+    val awakeableHolderClient = AwakeableHolderClient.fromClient(ingressClient, "cancel")
+
+    await until { runBlocking { awakeableHolderClient.hasAwakeable() } }
+
+    awakeableHolderClient.unlock("cancel")
+
+    // The termination signal might arrive before the blocking call to the cancel singleton was
+    // made, so we need to retry.
+    await.ignoreException(TimeoutCancellationException::class.java).until {
+      runBlocking {
+        testUtilsClient.cancelInvocation(id)
+        withTimeout(1.seconds) { cancelTestClient.verifyTest() }
+      }
+    }
+
+    // Check that the singleton service is unlocked
+    blockingServiceClient.isUnlocked()
   }
 }
