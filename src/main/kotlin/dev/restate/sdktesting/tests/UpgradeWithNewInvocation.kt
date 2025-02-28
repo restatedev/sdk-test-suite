@@ -13,9 +13,12 @@ import dev.restate.admin.client.ApiClient
 import dev.restate.admin.model.RegisterDeploymentRequest
 import dev.restate.admin.model.RegisterDeploymentRequestAnyOf
 import dev.restate.client.Client
-import dev.restate.sdktesting.contracts.*
+import dev.restate.sdktesting.contracts.VirtualObjectCommandInterpreter.InterpretRequest
+import dev.restate.sdktesting.contracts.VirtualObjectCommandInterpreterClient
+import dev.restate.sdktesting.contracts.VirtualObjectCommandInterpreterMetadata
 import dev.restate.sdktesting.infra.*
 import java.net.URI
+import java.util.UUID
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
 import org.awaitility.kotlin.withAlias
@@ -33,15 +36,12 @@ class UpgradeWithNewInvocation {
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
       withServiceSpec(
           ServiceSpec.builder("version1")
-              .withServices(
-                  TestUtilsServiceMetadata.SERVICE_NAME,
-                  ListObjectMetadata.SERVICE_NAME,
-                  AwakeableHolderMetadata.SERVICE_NAME)
+              .withServices(VirtualObjectCommandInterpreterMetadata.SERVICE_NAME)
               .withEnv(UPGRADE_TEST_ENV, "v1"))
       withServiceSpec(
           ServiceSpec.builder("version2")
               .skipRegistration()
-              .withServices(TestUtilsServiceMetadata.SERVICE_NAME)
+              .withServices(VirtualObjectCommandInterpreterMetadata.SERVICE_NAME)
               .withEnv(UPGRADE_TEST_ENV, "v2"))
     }
 
@@ -58,10 +58,14 @@ class UpgradeWithNewInvocation {
       @InjectClient ingressClient: Client,
       @InjectAdminURI adminURI: URI
   ) = runTest {
-    val testUtilsClient = TestUtilsServiceClient.fromClient(ingressClient)
+    val interpreter =
+        VirtualObjectCommandInterpreterClient.fromClient(
+            ingressClient, UUID.randomUUID().toString())
 
     // Execute the first request
-    val firstResult = testUtilsClient.getEnvVariable(UPGRADE_TEST_ENV, idempotentCallOptions)
+    val firstResult =
+        interpreter.interpretCommands(
+            InterpretRequest.getEnvVariable(UPGRADE_TEST_ENV), idempotentCallOptions)
     assertThat(firstResult).isEqualTo("v1")
 
     // Now register the update
@@ -74,7 +78,9 @@ class UpgradeWithNewInvocation {
     await withAlias
         "should now use service v2" untilAsserted
         {
-          assertThat(testUtilsClient.getEnvVariable(UPGRADE_TEST_ENV)).isEqualTo("v2")
+          assertThat(
+                  interpreter.interpretCommands(InterpretRequest.getEnvVariable(UPGRADE_TEST_ENV)))
+              .isEqualTo("v2")
         }
   }
 }

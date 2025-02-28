@@ -8,13 +8,12 @@
 // https://github.com/restatedev/sdk-test-suite/blob/main/LICENSE
 package dev.restate.sdktesting.infra
 
-import java.net.URL
+import java.net.URI
 import org.apache.logging.log4j.LogManager
 import org.testcontainers.Testcontainers
 import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.Network
 import org.testcontainers.utility.DockerImageName
-import java.net.URI
 
 /** Definition of a service to deploy. */
 data class ServiceSpec(
@@ -45,9 +44,7 @@ data class ServiceSpec(
       private var skipRegistration: Boolean = false,
   ) {
 
-    fun withServices(vararg svcs: String) = apply {
-      this.services += svcs.asList()
-    }
+    fun withServices(vararg svcs: String) = apply { this.services += svcs.asList() }
 
     fun withEnv(key: String, value: String) = apply { this.envs += mapOf(key to value) }
 

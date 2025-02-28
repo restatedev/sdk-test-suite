@@ -40,10 +40,10 @@ class Ingress {
       withServiceSpec(
           ServiceSpec.defaultBuilder()
               .withServices(
-                  AwakeableHolderMetadata.SERVICE_NAME,
                   CounterMetadata.SERVICE_NAME,
                   ProxyMetadata.SERVICE_NAME,
-                  TestUtilsServiceMetadata.SERVICE_NAME))
+                  TestUtilsServiceMetadata.SERVICE_NAME,
+                  VirtualObjectCommandInterpreterMetadata.SERVICE_NAME))
       // We need the short cleanup interval b/c of the tests with the idempotent invoke.
       withEnv("RESTATE_WORKER__CLEANUP_INTERVAL", "1s")
     }
@@ -177,18 +177,21 @@ class Ingress {
     val response = "response"
 
     // Send request
-    val testUtilsClient = TestUtilsServiceClient.fromClient(ingressClient)
+    val interpreter =
+        VirtualObjectCommandInterpreterClient.fromClient(
+            ingressClient, UUID.randomUUID().toString())
     val invocationId =
-        testUtilsClient
+        interpreter
             .send()
-            .createAwakeableAndAwaitIt(CreateAwakeableAndAwaitItRequest(awakeableKey)) {
-              idempotencyKey = myIdempotencyId
-            }
+            .interpretCommands(
+                VirtualObjectCommandInterpreter.InterpretRequest.awaitAwakeable(awakeableKey)) {
+                  idempotencyKey = myIdempotencyId
+                }
             .invocationHandle
             .invocationId()
     val invocationHandle =
         ingressClient.invocationHandle(
-            invocationId, TestUtilsServiceMetadata.Serde.CREATEAWAKEABLEANDAWAITIT_OUTPUT)
+            invocationId, VirtualObjectCommandInterpreterMetadata.Serde.INTERPRETCOMMANDS_OUTPUT)
 
     // Attach to request
     val blockedFut = invocationHandle.attachAsync()
@@ -200,16 +203,16 @@ class Ingress {
     assertThat(blockedFut).isNotDone
 
     // Unblock
-    val awakeableHolderClient = AwakeableHolderClient.fromClient(ingressClient, awakeableKey)
-    await untilAsserted { assertThat(awakeableHolderClient.hasAwakeable()).isTrue }
-    awakeableHolderClient.unlock(response, idempotentCallOptions)
+    await untilAsserted { assertThat(interpreter.hasAwakeable(awakeableKey)).isTrue }
+    interpreter.resolveAwakeable(
+        VirtualObjectCommandInterpreter.ResolveAwakeable(awakeableKey, response),
+        idempotentCallOptions)
 
     // Attach should be completed
-    assertThat(blockedFut.get()).isEqualTo(AwakeableResultResponse(response))
+    assertThat(blockedFut.get()).isEqualTo(response)
 
     // Invoke get output
-    assertThat(invocationHandle.getOutputSuspend().response.value)
-        .isEqualTo(AwakeableResultResponse(response))
+    assertThat(invocationHandle.getOutputSuspend().response.value).isEqualTo(response)
   }
 
   @Test
@@ -220,23 +223,28 @@ class Ingress {
     val awakeableKey = UUID.randomUUID().toString()
     val myIdempotencyId = UUID.randomUUID().toString()
     val response = "response"
+    val interpreterId = UUID.randomUUID().toString()
 
     // Send request
-    val testUtilsClient = TestUtilsServiceClient.fromClient(ingressClient)
+    val interpreter = VirtualObjectCommandInterpreterClient.fromClient(ingressClient, interpreterId)
     assertThat(
-            testUtilsClient
+            interpreter
                 .send()
-                .createAwakeableAndAwaitIt(CreateAwakeableAndAwaitItRequest(awakeableKey)) {
-                  idempotencyKey = myIdempotencyId
-                }
+                .interpretCommands(
+                    VirtualObjectCommandInterpreter.InterpretRequest.awaitAwakeable(awakeableKey)) {
+                      idempotencyKey = myIdempotencyId
+                    }
                 .status)
         .isEqualTo(SendStatus.ACCEPTED)
 
     val invocationHandle =
         ingressClient.idempotentInvocationHandle(
-            Target.service(TestUtilsServiceMetadata.SERVICE_NAME, "createAwakeableAndAwaitIt"),
+            Target.virtualObject(
+                VirtualObjectCommandInterpreterMetadata.SERVICE_NAME,
+                interpreterId,
+                "interpretCommands"),
             myIdempotencyId,
-            TestUtilsServiceMetadata.Serde.CREATEAWAKEABLEANDAWAITIT_OUTPUT)
+            VirtualObjectCommandInterpreterMetadata.Serde.INTERPRETCOMMANDS_OUTPUT)
 
     // Attach to request
     val blockedFut = invocationHandle.attachAsync()
@@ -248,16 +256,20 @@ class Ingress {
     assertThat(blockedFut).isNotDone
 
     // Unblock
-    val awakeableHolderClient = AwakeableHolderClient.fromClient(ingressClient, awakeableKey)
-    await untilAsserted { assertThat(awakeableHolderClient.hasAwakeable()).isTrue }
-    awakeableHolderClient.unlock(response, idempotentCallOptions)
+    await withAlias
+        "sync point" untilAsserted
+        {
+          assertThat(interpreter.hasAwakeable(awakeableKey)).isTrue
+        }
+    interpreter.resolveAwakeable(
+        VirtualObjectCommandInterpreter.ResolveAwakeable(awakeableKey, response),
+        idempotentCallOptions)
 
     // Attach should be completed
-    assertThat(blockedFut.get()).isEqualTo(AwakeableResultResponse(response))
+    assertThat(blockedFut.get().response).isEqualTo(response)
 
     // Invoke get output
-    assertThat(invocationHandle.getOutputSuspend().response().value)
-        .isEqualTo(AwakeableResultResponse(response))
+    assertThat(invocationHandle.getOutputSuspend().response().value).isEqualTo(response)
   }
 
   @Test

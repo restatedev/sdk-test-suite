@@ -9,6 +9,7 @@
 package dev.restate.sdktesting.tests
 
 import dev.restate.common.Request
+import dev.restate.sdktesting.contracts.VirtualObjectCommandInterpreter
 import java.util.UUID
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
@@ -41,3 +42,15 @@ suspend infix fun ConditionFactory.untilAsserted(fn: suspend () -> Unit) {
 
 fun runTest(timeout: Duration = 60.seconds, testBody: suspend TestScope.() -> Unit) =
     runTest(context = additionalLoggingContext(), timeout = timeout, testBody = testBody)
+
+fun VirtualObjectCommandInterpreter.InterpretRequest.Companion.getEnvVariable(env: String) =
+    VirtualObjectCommandInterpreter.InterpretRequest(
+        listOf(VirtualObjectCommandInterpreter.GetEnvVariable(env)))
+
+fun VirtualObjectCommandInterpreter.InterpretRequest.Companion.awaitAwakeable(
+    awakeableKey: String
+) =
+    VirtualObjectCommandInterpreter.InterpretRequest(
+        listOf(
+            VirtualObjectCommandInterpreter.AwaitOne(
+                VirtualObjectCommandInterpreter.CreateAwakeable(awakeableKey))))

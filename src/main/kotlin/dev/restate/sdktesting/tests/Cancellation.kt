@@ -14,6 +14,7 @@ import dev.restate.admin.model.DeletionMode
 import dev.restate.client.Client
 import dev.restate.sdktesting.contracts.*
 import dev.restate.sdktesting.infra.*
+import java.net.URI
 import java.util.*
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.*
@@ -25,7 +26,6 @@ import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.extension.RegisterExtension
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.EnumSource
-import java.net.URI
 
 @Tag("always-suspending")
 class Cancellation {
@@ -46,20 +46,20 @@ class Cancellation {
   @ParameterizedTest(name = "cancel blocked invocation on {0} from Admin API")
   @EnumSource(value = BlockingOperation::class)
   fun cancel(
-    blockingOperation: BlockingOperation,
-    @InjectClient ingressClient: Client,
-    @InjectAdminURI adminURI: URI,
+      blockingOperation: BlockingOperation,
+      @InjectClient ingressClient: Client,
+      @InjectAdminURI adminURI: URI,
   ) = runTest {
     val key = UUID.randomUUID().toString()
     val cancelTestClient = CancelTestRunnerClient.fromClient(ingressClient, key)
     val blockingServiceClient = CancelTestBlockingServiceClient.fromClient(ingressClient, key)
 
     val id =
-      cancelTestClient
-        .send()
-        .startTest(blockingOperation, init = idempotentCallOptions)
-        .invocationHandle()
-        .invocationId()
+        cancelTestClient
+            .send()
+            .startTest(blockingOperation, init = idempotentCallOptions)
+            .invocationHandle()
+            .invocationId()
 
     val awakeableHolderClient = AwakeableHolderClient.fromClient(ingressClient, "cancel")
     await withAlias

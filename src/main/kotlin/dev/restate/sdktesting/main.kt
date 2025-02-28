@@ -40,7 +40,6 @@ import kotlin.time.Duration
 import kotlinx.serialization.Serializable
 import org.junit.platform.engine.Filter
 import org.junit.platform.engine.discovery.ClassNameFilter
-import org.junit.platform.engine.support.descriptor.ClassSource
 import org.junit.platform.engine.support.descriptor.MethodSource
 import org.junit.platform.launcher.MethodFilter
 
@@ -61,6 +60,9 @@ class RestateSdkTestSuite : CliktCommand() {
     // The health check strategy uses the HttpUrlConnection which has no connect timeout by default.
     // Could have caused the health check to hang indefinitely.
     System.setProperty("sun.net.client.defaultConnectTimeout", "5000")
+    // Enable Logging of JDK client
+    //    System.setProperty("java.util.logging.manager", "org.apache.logging.log4j.jul.LogManager")
+    //    System.setProperty("jdk.httpclient.HttpClient.log", "all")
   }
 }
 
@@ -113,7 +115,8 @@ Run test suite, executing the service as container.
 """
             .trimIndent()) {
   val filter by FilterOptions().cooccurring()
-  val exclusionsFile by option("--exclusions", "--exclusions-file").help("File containing the excluded tests")
+  val exclusionsFile by
+      option("--exclusions", "--exclusions-file").help("File containing the excluded tests")
   val parallel by
       option(help = "Enable parallel testing")
           .help(

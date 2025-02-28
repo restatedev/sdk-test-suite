@@ -26,9 +26,7 @@ class RawHandler {
   companion object {
     @RegisterExtension
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
-      withServiceSpec {
-        services = listOf(TestUtilsServiceMetadata.SERVICE_NAME)
-      }
+      withServiceSpec { services = listOf(TestUtilsServiceMetadata.SERVICE_NAME) }
     }
   }
 

@@ -20,6 +20,7 @@ dependencyResolutionManagement {
       library("log4j-api", "org.apache.logging.log4j", "log4j-api").versionRef("log4j")
       library("log4j-core", "org.apache.logging.log4j", "log4j-core").versionRef("log4j")
       library("log4j-slf4j", "org.apache.logging.log4j", "log4j-slf4j-impl").versionRef("log4j")
+      library("log4j-jul", "org.apache.logging.log4j", "log4j-jul").versionRef("log4j")
       library("log4j-kotlin", "org.apache.logging.log4j", "log4j-api-kotlin").version("1.5.0")
 
       version("jackson", "2.18.2")

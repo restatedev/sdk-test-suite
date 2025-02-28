@@ -53,7 +53,7 @@ class KillRuntime {
         JdkClient.of(
             httpClient,
             "http://127.0.0.1:${runtimeHandle.getMappedPort(8080)!!}",
-          SerdeFactory.NOOP,
+            SerdeFactory.NOOP,
             ClientRequestOptions.DEFAULT)
     val res1 = CounterClient.fromClient(ingressClient, "my-key").add(1, idempotentCallOptions)
     assertThat(res1.oldValue).isEqualTo(0)
@@ -78,7 +78,7 @@ class KillRuntime {
               JdkClient.of(
                   httpClient,
                   "http://127.0.0.1:${runtimeHandle.getMappedPort(8080)!!}",
-                SerdeFactory.NOOP,
+                  SerdeFactory.NOOP,
                   ClientRequestOptions.DEFAULT)
           val res2 =
               withTimeout(5.seconds) {

@@ -50,7 +50,7 @@ class WorkflowAPI {
 
     client.unblock("Till", idempotentCallOptions)
 
-    assertThat(client.workflowHandle().attach()).isEqualTo("Till")
+    assertThat(client.workflowHandle().attach().response).isEqualTo("Till")
 
     // Can call get output again
     assertThat(client.workflowHandle().getOutputSuspend().response.value).isEqualTo("Till")

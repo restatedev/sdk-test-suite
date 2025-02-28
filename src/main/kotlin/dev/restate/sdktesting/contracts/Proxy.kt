@@ -20,7 +20,8 @@ data class ProxyRequest(
     val handlerName: String,
     // Bytes are encoded as array of numbers
     val message: ByteArray,
-    val delayMillis: Int? = null
+    val delayMillis: Int? = null,
+    val idempotencyKey: String? = null
 )
 
 @Serializable

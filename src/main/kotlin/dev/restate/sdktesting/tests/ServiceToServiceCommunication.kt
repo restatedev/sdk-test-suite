@@ -9,6 +9,8 @@
 package dev.restate.sdktesting.tests
 
 import dev.restate.client.Client
+import dev.restate.client.kotlin.getOutputSuspend
+import dev.restate.common.Target
 import dev.restate.sdktesting.contracts.*
 import dev.restate.sdktesting.infra.InjectClient
 import dev.restate.sdktesting.infra.RestateDeployerExtension
@@ -80,6 +82,76 @@ class ServiceToServiceCommunication {
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
+  fun oneWayCallWithIdempotencyKey(@InjectClient ingressClient: Client) = runTest {
+    val counterId = UUID.randomUUID().toString()
+    val idempotencyKey = UUID.randomUUID().toString()
+    val proxyClient = ProxyClient.fromClient(ingressClient)
+    val counterClient = CounterClient.fromClient(ingressClient, counterId)
+
+    // We do this in a loop, because there can be failures
+    await untilAsserted
+        {
+          proxyClient.oneWayCall(
+              ProxyRequest(
+                  CounterMetadata.SERVICE_NAME,
+                  counterId,
+                  "add",
+                  Json.encodeToString(1).encodeToByteArray(),
+                  idempotencyKey = idempotencyKey))
+        }
+
+    await untilAsserted { assertThat(counterClient.get()).isEqualTo(1L) }
+
+    assertThat(
+            ingressClient
+                .idempotentInvocationHandle(
+                    Target.virtualObject(CounterMetadata.SERVICE_NAME, counterId, "add"),
+                    idempotencyKey,
+                    CounterMetadata.Serde.ADD_OUTPUT)
+                .getOutputSuspend()
+                .response
+                .value)
+        .isEqualTo(CounterUpdateResponse(0, 1))
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  fun callWithIdempotencyKey(@InjectClient ingressClient: Client) = runTest {
+    val counterId = UUID.randomUUID().toString()
+    val idempotencyKey = UUID.randomUUID().toString()
+    val proxyClient = ProxyClient.fromClient(ingressClient)
+    val counterClient = CounterClient.fromClient(ingressClient, counterId)
+
+    // We do this in a loop, because there can be failures
+    await untilAsserted
+        {
+          assertThat(
+                  proxyClient.call(
+                      ProxyRequest(
+                          CounterMetadata.SERVICE_NAME,
+                          counterId,
+                          "add",
+                          Json.encodeToString(1).encodeToByteArray(),
+                          idempotencyKey = idempotencyKey)))
+              .isEqualTo(Json.encodeToString(CounterUpdateResponse(0, 1)).toByteArray())
+        }
+
+    await untilAsserted { assertThat(counterClient.get()).isEqualTo(1L) }
+
+    assertThat(
+            ingressClient
+                .idempotentInvocationHandle(
+                    Target.virtualObject(CounterMetadata.SERVICE_NAME, counterId, "add"),
+                    idempotencyKey,
+                    CounterMetadata.Serde.ADD_OUTPUT)
+                .getOutputSuspend()
+                .response
+                .value)
+        .isEqualTo(CounterUpdateResponse(0, 1))
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
   @Timeout(value = 30, unit = TimeUnit.SECONDS)
   @Tag("timers")
   fun oneWayCallWithDelay(@InjectClient ingressClient: Client) =
@@ -88,20 +160,19 @@ class ServiceToServiceCommunication {
         val proxyClient = ProxyClient.fromClient(ingressClient)
         val counterClient = CounterClient.fromClient(ingressClient, counterId)
 
-        for (i in 1..10) {
-          proxyClient.oneWayCall(
-              ProxyRequest(
-                  CounterMetadata.SERVICE_NAME,
-                  counterId,
-                  "add",
-                  Json.encodeToString(1).encodeToByteArray(),
-                  // This is a reasonably long time to avoid that the timeToAssert
-                  // generates too many false positives
-                  5000),
-              idempotentCallOptions)
-        }
-
         val elapsed = measureNanoTime {
+          for (i in 1..10) {
+            proxyClient.oneWayCall(
+                ProxyRequest(
+                    CounterMetadata.SERVICE_NAME,
+                    counterId,
+                    "add",
+                    Json.encodeToString(1).encodeToByteArray(),
+                    // This is a reasonably long time to avoid that the timeToAssert
+                    // generates too many false positives
+                    delayMillis = 5000),
+                idempotentCallOptions)
+          }
           await untilAsserted { assertThat(counterClient.get()).isEqualTo(10L) }
         }
 
