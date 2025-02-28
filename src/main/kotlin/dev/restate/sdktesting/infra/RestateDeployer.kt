@@ -85,6 +85,18 @@ private constructor(
       this.serviceEndpoints.add(serviceSpecBuilder.build())
     }
 
+    fun withServiceSpec(init: ServiceSpec.Builder.() -> Unit) = apply {
+      val builder = ServiceSpec.defaultBuilder()
+      builder.init()
+      this.serviceEndpoints.add(builder.build())
+    }
+
+    fun withServiceSpec(specName: String, init: ServiceSpec.Builder.() -> Unit) = apply {
+      val builder = ServiceSpec.builder(specName)
+      builder.init()
+      this.serviceEndpoints.add(builder.build())
+    }
+
     /** Add a container that will be added within the same network of functions and runtime. */
     fun withContainer(hostName: String, container: GenericContainer<*>) = apply {
       this.additionalContainers[hostName] = container
@@ -316,13 +328,13 @@ private constructor(
   }
 
   private fun discoverDeployment(client: DeploymentApi, spec: ServiceSpec) {
-    val url = spec.getEndpointUrl(config)
+    val uri = spec.getEndpointUrl(config)
     if (spec.skipRegistration) {
-      LOG.debug("Skipping registration for endpoint {}", url)
+      LOG.debug("Skipping registration for endpoint {}", uri)
       return
     }
     val request =
-        RegisterDeploymentRequest(RegisterDeploymentRequestAnyOf().uri(url.toString()).force(false))
+        RegisterDeploymentRequest(RegisterDeploymentRequestAnyOf().uri(uri.toString()).force(false))
 
     val response =
         Unreliables.retryUntilSuccess(20, TimeUnit.SECONDS) {
@@ -331,7 +343,7 @@ private constructor(
           } catch (e: ApiException) {
             Thread.sleep(30)
             throw IllegalStateException(
-                "Error when discovering endpoint $url, got status code ${e.code} with body: ${e.responseBody}",
+                "Error when discovering endpoint $uri, got status code ${e.code} with body: ${e.responseBody}",
                 e)
           }
         }
@@ -341,7 +353,7 @@ private constructor(
       Successfully executed discovery for endpoint {}, registered with id {}. Discovered services: {}
     """
             .trimIndent(),
-        url,
+        uri,
         response.id,
         response.services.map { it.name })
   }

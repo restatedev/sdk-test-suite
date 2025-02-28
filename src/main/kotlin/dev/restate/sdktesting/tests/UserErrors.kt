@@ -8,11 +8,11 @@
 // https://github.com/restatedev/sdk-test-suite/blob/main/LICENSE
 package dev.restate.sdktesting.tests
 
-import dev.restate.sdk.client.Client
+import dev.restate.client.Client
 import dev.restate.sdktesting.contracts.CounterClient
-import dev.restate.sdktesting.contracts.CounterDefinitions
+import dev.restate.sdktesting.contracts.CounterMetadata
 import dev.restate.sdktesting.contracts.FailingClient
-import dev.restate.sdktesting.contracts.FailingDefinitions
+import dev.restate.sdktesting.contracts.FailingMetadata
 import dev.restate.sdktesting.infra.*
 import java.util.*
 import org.assertj.core.api.Assertions.assertThat
@@ -33,7 +33,7 @@ class UserErrors {
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
       withServiceSpec(
           ServiceSpec.defaultBuilder()
-              .withServices(FailingDefinitions.SERVICE_NAME, CounterDefinitions.SERVICE_NAME))
+              .withServices(FailingMetadata.SERVICE_NAME, CounterMetadata.SERVICE_NAME))
     }
   }
 
@@ -46,7 +46,7 @@ class UserErrors {
     assertThat(
             runCatching {
                   FailingClient.fromClient(ingressClient, UUID.randomUUID().toString())
-                      .terminallyFailingCall(errorMessage, idempotentCallOptions())
+                      .terminallyFailingCall(errorMessage, idempotentCallOptions)
                 }
                 .exceptionOrNull())
         .hasMessageContaining(errorMessage)
@@ -70,10 +70,10 @@ class UserErrors {
     val counterClient = CounterClient.fromClient(ingressClient, counterName)
 
     assertThat(
-            runCatching { counterClient.addThenFail(1, idempotentCallOptions()) }.exceptionOrNull())
+            runCatching { counterClient.addThenFail(1, idempotentCallOptions) }.exceptionOrNull())
         .hasMessageContaining(counterName)
 
-    assertThat(counterClient.get(idempotentCallOptions())).isEqualTo(1)
+    assertThat(counterClient.get(idempotentCallOptions)).isEqualTo(1)
   }
 
   @DisplayName("Test propagate failure from another service")
@@ -85,7 +85,7 @@ class UserErrors {
 
     assertThat(
             runCatching {
-                  failingClient.callTerminallyFailingCall(errorMessage, idempotentCallOptions())
+                  failingClient.callTerminallyFailingCall(errorMessage, idempotentCallOptions)
                 }
                 .exceptionOrNull())
         .hasMessageContaining(errorMessage)
@@ -97,7 +97,7 @@ class UserErrors {
   fun invocationWithEventualSuccess(@InjectClient ingressClient: Client) = runTest {
     assertThat(
             FailingClient.fromClient(ingressClient, UUID.randomUUID().toString())
-                .failingCallWithEventualSuccess(idempotentCallOptions()))
+                .failingCallWithEventualSuccess(idempotentCallOptions))
         .isEqualTo(SUCCESS_ATTEMPT)
   }
 
@@ -110,7 +110,7 @@ class UserErrors {
     assertThat(
             runCatching {
                   FailingClient.fromClient(ingressClient, UUID.randomUUID().toString())
-                      .terminallyFailingSideEffect(errorMessage, idempotentCallOptions())
+                      .terminallyFailingSideEffect(errorMessage, idempotentCallOptions)
                 }
                 .exceptionOrNull())
         .hasMessageContaining(errorMessage)

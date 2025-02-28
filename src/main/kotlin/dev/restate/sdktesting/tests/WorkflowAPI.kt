@@ -8,10 +8,11 @@
 // https://github.com/restatedev/sdk-test-suite/blob/main/LICENSE
 package dev.restate.sdktesting.tests
 
-import dev.restate.sdk.client.Client
-import dev.restate.sdk.client.SendResponse.SendStatus
+import dev.restate.client.Client
+import dev.restate.client.SendResponse.SendStatus
+import dev.restate.client.kotlin.getOutputSuspend
 import dev.restate.sdktesting.contracts.BlockAndWaitWorkflowClient
-import dev.restate.sdktesting.contracts.BlockAndWaitWorkflowDefinitions
+import dev.restate.sdktesting.contracts.BlockAndWaitWorkflowMetadata
 import dev.restate.sdktesting.infra.*
 import java.util.*
 import org.assertj.core.api.Assertions.assertThat
@@ -31,7 +32,7 @@ class WorkflowAPI {
     @RegisterExtension
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
       withServiceSpec(
-          ServiceSpec.defaultBuilder().withServices(BlockAndWaitWorkflowDefinitions.SERVICE_NAME))
+          ServiceSpec.defaultBuilder().withServices(BlockAndWaitWorkflowMetadata.SERVICE_NAME))
     }
   }
 
@@ -47,17 +48,18 @@ class WorkflowAPI {
     // Wait state is set
     await withAlias "state is not blank" untilAsserted { assertThat(client.getState()).isNotBlank }
 
-    client.unblock("Till", idempotentCallOptions())
+    client.unblock("Till", idempotentCallOptions)
 
-    assertThat(client.workflowHandle().attach()).isEqualTo("Till")
+    assertThat(client.workflowHandle().attach().response).isEqualTo("Till")
 
     // Can call get output again
-    assertThat(client.workflowHandle().output.value).isEqualTo("Till")
+    assertThat(client.workflowHandle().getOutputSuspend().response.value).isEqualTo("Till")
 
     // Re-submit should have no effect
     val secondSendResponse = client.submit("Francesco")
     assertThat(secondSendResponse.status).isEqualTo(SendStatus.PREVIOUSLY_ACCEPTED)
-    assertThat(secondSendResponse.invocationId).isEqualTo(sendResponse.invocationId)
-    assertThat(client.workflowHandle().output.value).isEqualTo("Till")
+    assertThat(secondSendResponse.invocationHandle.invocationId())
+        .isEqualTo(sendResponse.invocationHandle.invocationId())
+    assertThat(client.workflowHandle().getOutputSuspend().response.value).isEqualTo("Till")
   }
 }

@@ -1,5 +1,5 @@
 [versions]
-restate = "1.1.1"
+restate = "2.0.0-SNAPSHOT"
 ktor = "2.3.9"
 
 [libraries]

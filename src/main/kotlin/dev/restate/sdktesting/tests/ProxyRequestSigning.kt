@@ -8,9 +8,9 @@
 // https://github.com/restatedev/sdk-test-suite/blob/main/LICENSE
 package dev.restate.sdktesting.tests
 
-import dev.restate.sdk.client.Client
+import dev.restate.client.Client
 import dev.restate.sdktesting.contracts.CounterClient
-import dev.restate.sdktesting.contracts.CounterDefinitions
+import dev.restate.sdktesting.contracts.CounterMetadata
 import dev.restate.sdktesting.infra.InjectClient
 import dev.restate.sdktesting.infra.RestateDeployerExtension
 import dev.restate.sdktesting.infra.ServiceSpec
@@ -39,7 +39,7 @@ MC4CAQAwBQYDK2VwBCIEIHsQRVQ+AZX9/Yy1b0Zw+OA+bb7xDxGsAd5kB45jZhoc
       withEnv("RESTATE_REQUEST_IDENTITY_PRIVATE_KEY_PEM_FILE", "/a.pem")
       withServiceSpec(
           ServiceSpec.builder("service-with-request-signing")
-              .withServices(CounterDefinitions.SERVICE_NAME)
+              .withServices(CounterMetadata.SERVICE_NAME)
               .withEnv(E2E_REQUEST_SIGNING_ENV, SIGNING_KEY)
               .build())
     }
@@ -51,7 +51,7 @@ MC4CAQAwBQYDK2VwBCIEIHsQRVQ+AZX9/Yy1b0Zw+OA+bb7xDxGsAd5kB45jZhoc
     val counterName = UUID.randomUUID().toString()
     val client = CounterClient.fromClient(ingressClient, counterName)
 
-    client.add(1, idempotentCallOptions())
-    assertThat(client.get(idempotentCallOptions())).isEqualTo(1)
+    client.add(1, idempotentCallOptions)
+    assertThat(client.get(idempotentCallOptions)).isEqualTo(1)
   }
 }

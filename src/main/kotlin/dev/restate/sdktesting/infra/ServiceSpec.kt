@@ -8,7 +8,7 @@
 // https://github.com/restatedev/sdk-test-suite/blob/main/LICENSE
 package dev.restate.sdktesting.infra
 
-import java.net.URL
+import java.net.URI
 import org.apache.logging.log4j.LogManager
 import org.testcontainers.Testcontainers
 import org.testcontainers.containers.GenericContainer
@@ -39,16 +39,16 @@ data class ServiceSpec(
 
   data class Builder(
       private var name: String,
-      private val services: MutableList<String> = mutableListOf(),
-      private var envs: MutableMap<String, String> = mutableMapOf(),
+      var services: List<String> = listOf(),
+      var envs: Map<String, String> = mapOf(),
       private var skipRegistration: Boolean = false,
   ) {
 
-    fun withServices(vararg services: String) = apply { this.services.addAll(services) }
+    fun withServices(vararg svcs: String) = apply { this.services += svcs.asList() }
 
-    fun withEnv(key: String, value: String) = apply { this.envs[key] = value }
+    fun withEnv(key: String, value: String) = apply { this.envs += mapOf(key to value) }
 
-    fun withEnvs(envs: Map<String, String>) = apply { this.envs.putAll(envs) }
+    fun withEnvs(envs: Map<String, String>) = apply { this.envs += envs }
 
     fun skipRegistration() = apply { this.skipRegistration = true }
 
@@ -98,8 +98,8 @@ data class ServiceSpec(
     }
   }
 
-  internal fun getEndpointUrl(config: RestateDeployerConfig): URL {
+  internal fun getEndpointUrl(config: RestateDeployerConfig): URI {
     val hostNamePort = toHostnamePort(config)
-    return URL("http", hostNamePort.first, hostNamePort.second, "/")
+    return URI.create("http://${hostNamePort.first}:${hostNamePort.second}/")
   }
 }

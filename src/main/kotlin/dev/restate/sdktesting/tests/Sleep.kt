@@ -8,9 +8,9 @@
 // https://github.com/restatedev/sdk-test-suite/blob/main/LICENSE
 package dev.restate.sdktesting.tests
 
-import dev.restate.sdk.client.Client
+import dev.restate.client.Client
 import dev.restate.sdktesting.contracts.TestUtilsServiceClient
-import dev.restate.sdktesting.contracts.TestUtilsServiceDefinitions
+import dev.restate.sdktesting.contracts.TestUtilsServiceMetadata
 import dev.restate.sdktesting.infra.InjectClient
 import dev.restate.sdktesting.infra.RestateDeployerExtension
 import dev.restate.sdktesting.infra.ServiceSpec
@@ -39,7 +39,7 @@ class Sleep {
     @RegisterExtension
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
       withServiceSpec(
-          ServiceSpec.defaultBuilder().withServices(TestUtilsServiceDefinitions.SERVICE_NAME))
+          ServiceSpec.defaultBuilder().withServices(TestUtilsServiceMetadata.SERVICE_NAME))
     }
   }
 
@@ -50,7 +50,7 @@ class Sleep {
 
     val elapsed = measureNanoTime {
       TestUtilsServiceClient.fromClient(ingressClient)
-          .sleepConcurrently(listOf(sleepDuration.inWholeMilliseconds), idempotentCallOptions())
+          .sleepConcurrently(listOf(sleepDuration.inWholeMilliseconds), idempotentCallOptions)
     }
 
     assertThat(elapsed.nanoseconds).isGreaterThanOrEqualTo(sleepDuration)
@@ -78,7 +78,7 @@ class Sleep {
                           minSleepDuration.inWholeMilliseconds..maxSleepDuration
                                   .inWholeMilliseconds)
                     },
-                    idempotentCallOptions())
+                    idempotentCallOptions)
               }
             }
             .joinAll()

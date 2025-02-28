@@ -8,10 +8,12 @@
 // https://github.com/restatedev/sdk-test-suite/blob/main/LICENSE
 package dev.restate.sdktesting.tests
 
-import dev.restate.sdk.client.DefaultClient
+import dev.restate.client.ClientRequestOptions
+import dev.restate.client.jdk.JdkClient
 import dev.restate.sdktesting.contracts.CounterClient
-import dev.restate.sdktesting.contracts.CounterDefinitions
+import dev.restate.sdktesting.contracts.CounterMetadata
 import dev.restate.sdktesting.infra.*
+import dev.restate.serde.SerdeFactory
 import java.net.http.HttpClient
 import java.time.Duration
 import java.time.temporal.ChronoUnit
@@ -36,7 +38,7 @@ class KillRuntime {
     @JvmStatic
     @RegisterExtension
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
-      withServiceSpec(ServiceSpec.defaultBuilder().withServices(CounterDefinitions.SERVICE_NAME))
+      withServiceSpec(ServiceSpec.defaultBuilder().withServices(CounterMetadata.SERVICE_NAME))
     }
   }
 
@@ -48,9 +50,12 @@ class KillRuntime {
     // We instantiate the client manually, in order to close it before killing and restarting
     var httpClient = HttpClient.newHttpClient()
     var ingressClient =
-        DefaultClient.of(
-            httpClient, "http://127.0.0.1:${runtimeHandle.getMappedPort(8080)!!}", HashMap())
-    val res1 = CounterClient.fromClient(ingressClient, "my-key").add(1, idempotentCallOptions())
+        JdkClient.of(
+            httpClient,
+            "http://127.0.0.1:${runtimeHandle.getMappedPort(8080)!!}",
+            SerdeFactory.NOOP,
+            ClientRequestOptions.DEFAULT)
+    val res1 = CounterClient.fromClient(ingressClient, "my-key").add(1, idempotentCallOptions)
     assertThat(res1.oldValue).isEqualTo(0)
     assertThat(res1.newValue).isEqualTo(1)
 
@@ -70,11 +75,14 @@ class KillRuntime {
           val httpClient =
               HttpClient.newBuilder().connectTimeout(5.seconds.toJavaDuration()).build()
           val ingressClient =
-              DefaultClient.of(
-                  httpClient, "http://127.0.0.1:${runtimeHandle.getMappedPort(8080)!!}", HashMap())
+              JdkClient.of(
+                  httpClient,
+                  "http://127.0.0.1:${runtimeHandle.getMappedPort(8080)!!}",
+                  SerdeFactory.NOOP,
+                  ClientRequestOptions.DEFAULT)
           val res2 =
               withTimeout(5.seconds) {
-                CounterClient.fromClient(ingressClient, "my-key").add(2, idempotentCallOptions())
+                CounterClient.fromClient(ingressClient, "my-key").add(2, idempotentCallOptions)
               }
           assertThat(res2.oldValue).isEqualTo(1)
           assertThat(res2.newValue).isEqualTo(3)

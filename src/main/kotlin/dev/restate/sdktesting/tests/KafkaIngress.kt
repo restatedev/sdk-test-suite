@@ -11,18 +11,17 @@ package dev.restate.sdktesting.tests
 import dev.restate.admin.api.SubscriptionApi
 import dev.restate.admin.client.ApiClient
 import dev.restate.admin.model.CreateSubscriptionRequest
-import dev.restate.sdk.client.Client
+import dev.restate.client.Client
 import dev.restate.sdktesting.contracts.CounterClient
-import dev.restate.sdktesting.contracts.CounterDefinitions
-import dev.restate.sdktesting.contracts.ProxyDefinitions
+import dev.restate.sdktesting.contracts.CounterMetadata
+import dev.restate.sdktesting.contracts.ProxyMetadata
 import dev.restate.sdktesting.contracts.ProxyRequest
 import dev.restate.sdktesting.infra.*
 import dev.restate.sdktesting.infra.runtimeconfig.IngressOptions
 import dev.restate.sdktesting.infra.runtimeconfig.KafkaClusterOptions
 import dev.restate.sdktesting.infra.runtimeconfig.RestateConfigSchema
-import java.net.URL
+import java.net.URI
 import java.util.*
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.Producer
@@ -56,7 +55,7 @@ class KafkaIngress {
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
       withServiceSpec(
           ServiceSpec.defaultBuilder()
-              .withServices(ProxyDefinitions.SERVICE_NAME, CounterDefinitions.SERVICE_NAME))
+              .withServices(ProxyMetadata.SERVICE_NAME, CounterMetadata.SERVICE_NAME))
       withContainer("kafka", KafkaContainer(COUNTER_TOPIC, EVENT_HANDLER_TOPIC))
       withConfig(kafkaClusterOptions())
     }
@@ -65,7 +64,7 @@ class KafkaIngress {
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   fun handleEventInCounterService(
-      @InjectMetaURL metaURL: URL,
+      @InjectAdminURI adminURI: URI,
       @InjectContainerPort(hostName = "kafka", port = KafkaContainer.EXTERNAL_PORT) kafkaPort: Int,
       @InjectClient ingressClient: Client
   ) = runTest {
@@ -73,11 +72,11 @@ class KafkaIngress {
 
     // Create subscription
     val subscriptionsClient =
-        SubscriptionApi(ApiClient().setHost(metaURL.host).setPort(metaURL.port))
+        SubscriptionApi(ApiClient().setHost(adminURI.host).setPort(adminURI.port))
     subscriptionsClient.createSubscription(
         CreateSubscriptionRequest()
             .source("kafka://my-cluster/$COUNTER_TOPIC")
-            .sink("service://${CounterDefinitions.SERVICE_NAME}/add")
+            .sink("service://${CounterMetadata.SERVICE_NAME}/add")
             .options(mapOf("auto.offset.reset" to "earliest")))
 
     // Produce message to kafka
@@ -96,7 +95,7 @@ class KafkaIngress {
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   fun handleEventInEventHandler(
-      @InjectMetaURL metaURL: URL,
+      @InjectAdminURI adminURI: URI,
       @InjectContainerPort(hostName = "kafka", port = KafkaContainer.EXTERNAL_PORT) kafkaPort: Int,
       @InjectClient ingressClient: Client
   ) = runTest {
@@ -104,11 +103,11 @@ class KafkaIngress {
 
     // Create subscription
     val subscriptionsClient =
-        SubscriptionApi(ApiClient().setHost(metaURL.host).setPort(metaURL.port))
+        SubscriptionApi(ApiClient().setHost(adminURI.host).setPort(adminURI.port))
     subscriptionsClient.createSubscription(
         CreateSubscriptionRequest()
             .source("kafka://my-cluster/$EVENT_HANDLER_TOPIC")
-            .sink("service://${ProxyDefinitions.SERVICE_NAME}/oneWayCall")
+            .sink("service://${ProxyMetadata.SERVICE_NAME}/oneWayCall")
             .options(mapOf("auto.offset.reset" to "earliest")))
 
     // Produce message to kafka
@@ -119,21 +118,21 @@ class KafkaIngress {
             null to
                 Json.encodeToString(
                     ProxyRequest(
-                        CounterDefinitions.SERVICE_NAME,
+                        CounterMetadata.SERVICE_NAME,
                         counter,
                         "add",
                         Json.encodeToString(1).encodeToByteArray())),
             null to
                 Json.encodeToString(
                     ProxyRequest(
-                        CounterDefinitions.SERVICE_NAME,
+                        CounterMetadata.SERVICE_NAME,
                         counter,
                         "add",
                         Json.encodeToString(2).encodeToByteArray())),
             null to
                 Json.encodeToString(
                     ProxyRequest(
-                        CounterDefinitions.SERVICE_NAME,
+                        CounterMetadata.SERVICE_NAME,
                         counter,
                         "add",
                         Json.encodeToString(3).encodeToByteArray())),

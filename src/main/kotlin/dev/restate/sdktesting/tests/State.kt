@@ -8,7 +8,7 @@
 // https://github.com/restatedev/sdk-test-suite/blob/main/LICENSE
 package dev.restate.sdktesting.tests
 
-import dev.restate.sdk.client.Client
+import dev.restate.client.Client
 import dev.restate.sdktesting.contracts.*
 import dev.restate.sdktesting.infra.InjectClient
 import dev.restate.sdktesting.infra.RestateDeployerExtension
@@ -35,9 +35,9 @@ class State {
       withServiceSpec(
           ServiceSpec.defaultBuilder()
               .withServices(
-                  CounterDefinitions.SERVICE_NAME,
-                  ProxyDefinitions.SERVICE_NAME,
-                  MapObjectDefinitions.SERVICE_NAME))
+                  CounterMetadata.SERVICE_NAME,
+                  ProxyMetadata.SERVICE_NAME,
+                  MapObjectMetadata.SERVICE_NAME))
     }
   }
 
@@ -45,11 +45,11 @@ class State {
   @Execution(ExecutionMode.CONCURRENT)
   fun add(@InjectClient ingressClient: Client) = runTest {
     val counterClient = CounterClient.fromClient(ingressClient, "add")
-    val res1 = counterClient.add(1, idempotentCallOptions())
+    val res1 = counterClient.add(1, idempotentCallOptions)
     assertThat(res1.oldValue).isEqualTo(0)
     assertThat(res1.newValue).isEqualTo(1)
 
-    val res2 = counterClient.add(2, idempotentCallOptions())
+    val res2 = counterClient.add(2, idempotentCallOptions)
     assertThat(res2.oldValue).isEqualTo(1)
     assertThat(res2.newValue).isEqualTo(3)
   }
@@ -64,11 +64,11 @@ class State {
     for (x in 0.rangeUntil(3)) {
       proxyClient.oneWayCall(
           ProxyRequest(
-              CounterDefinitions.SERVICE_NAME,
+              CounterMetadata.SERVICE_NAME,
               counterId,
               "add",
               Json.encodeToString(1).encodeToByteArray()),
-          idempotentCallOptions())
+          idempotentCallOptions)
     }
 
     await untilAsserted { assertThat(counterClient.get()).isEqualTo(3L) }
@@ -81,22 +81,22 @@ class State {
     val mapObj = MapObjectClient.fromClient(ingressClient, mapName)
     val anotherMapObj = MapObjectClient.fromClient(ingressClient, mapName + "1")
 
-    mapObj.set(Entry("my-key-0", "my-value-0"), idempotentCallOptions())
-    mapObj.set(Entry("my-key-1", "my-value-1"), idempotentCallOptions())
+    mapObj.set(Entry("my-key-0", "my-value-0"), idempotentCallOptions)
+    mapObj.set(Entry("my-key-1", "my-value-1"), idempotentCallOptions)
 
     // Set state to another map
-    anotherMapObj.set(Entry("my-key-2", "my-value-2"), idempotentCallOptions())
+    anotherMapObj.set(Entry("my-key-2", "my-value-2"), idempotentCallOptions)
 
     // Clear all
-    assertThat(mapObj.clearAll(idempotentCallOptions()))
+    assertThat(mapObj.clearAll(idempotentCallOptions))
         .map(Function { it.key })
         .containsExactlyInAnyOrder("my-key-0", "my-key-1")
 
     // Check keys are not available
-    assertThat(mapObj.get("my-key-0", idempotentCallOptions())).isEmpty()
-    assertThat(mapObj.get("my-key-1", idempotentCallOptions())).isEmpty()
+    assertThat(mapObj.get("my-key-0", idempotentCallOptions)).isEmpty()
+    assertThat(mapObj.get("my-key-1", idempotentCallOptions)).isEmpty()
 
     // Check the other service instance was left untouched
-    assertThat(anotherMapObj.get("my-key-2", idempotentCallOptions())).isEqualTo("my-value-2")
+    assertThat(anotherMapObj.get("my-key-2", idempotentCallOptions)).isEqualTo("my-value-2")
   }
 }

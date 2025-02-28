@@ -40,8 +40,8 @@ import kotlin.time.Duration
 import kotlinx.serialization.Serializable
 import org.junit.platform.engine.Filter
 import org.junit.platform.engine.discovery.ClassNameFilter
-import org.junit.platform.engine.support.descriptor.ClassSource
 import org.junit.platform.engine.support.descriptor.MethodSource
+import org.junit.platform.launcher.MethodFilter
 
 @Serializable data class ExclusionsFile(val exclusions: Map<String, List<String>> = emptyMap())
 
@@ -60,6 +60,9 @@ class RestateSdkTestSuite : CliktCommand() {
     // The health check strategy uses the HttpUrlConnection which has no connect timeout by default.
     // Could have caused the health check to hang indefinitely.
     System.setProperty("sun.net.client.defaultConnectTimeout", "5000")
+    // Enable Logging of JDK client
+    //    System.setProperty("java.util.logging.manager", "org.apache.logging.log4j.jul.LogManager")
+    //    System.setProperty("jdk.httpclient.HttpClient.log", "all")
   }
 }
 
@@ -112,7 +115,8 @@ Run test suite, executing the service as container.
 """
             .trimIndent()) {
   val filter by FilterOptions().cooccurring()
-  val exclusionsFile by option().help("File containing the excluded tests")
+  val exclusionsFile by
+      option("--exclusions", "--exclusions-file").help("File containing the excluded tests")
   val parallel by
       option(help = "Enable parallel testing")
           .help(
@@ -146,11 +150,8 @@ Run test suite, executing the service as container.
     val newExclusions = mutableMapOf<String, List<String>>()
     var newFailures = false
     for (testSuite in testSuites) {
-      val exclusions =
-          (loadedExclusions.exclusions[testSuite.name] ?: emptyList()).map {
-            testClassNameToFQCN(it)
-          }
-      val exclusionsFilters = exclusions.map { ClassNameFilter.excludeClassNamePatterns(it) }
+      val exclusions = loadedExclusions.exclusions[testSuite.name] ?: emptyList()
+      val exclusionsFilters = exclusions.map { MethodFilter.excludeMethodNamePatterns(it) }
       val cliOptionFilter =
           filter?.testName?.let {
             listOf(ClassNameFilter.includeClassNamePatterns(testClassNameToFQCN(it)))
@@ -174,8 +175,7 @@ Run test suite, executing the service as container.
                     .mapNotNull { it.source.getOrNull() }
                     .mapNotNull {
                       when (it) {
-                        is ClassSource -> it.className!!
-                        is MethodSource -> it.className!!
+                        is MethodSource -> "${it.className}.${it.methodName}"
                         else -> null
                       }
                     }

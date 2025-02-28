@@ -8,8 +8,8 @@
 // https://github.com/restatedev/sdk-test-suite/blob/main/LICENSE
 package dev.restate.sdktesting.infra
 
-import dev.restate.sdk.client.Client
-import java.net.URL
+import dev.restate.client.Client
+import java.net.URI
 import java.nio.file.Path
 import org.junit.jupiter.api.extension.*
 import org.junit.jupiter.api.extension.ExtensionContext.Namespace
@@ -31,10 +31,10 @@ abstract class BaseRestateDeployerExtension : ParameterResolver {
         Client::class.java.isAssignableFrom(parameterContext.parameter.type)) ||
         (parameterContext.isAnnotated(InjectContainerPort::class.java) &&
             Int::class.java.isAssignableFrom(parameterContext.parameter.type)) ||
-        (parameterContext.isAnnotated(InjectIngressURL::class.java) &&
-            URL::class.java.isAssignableFrom(parameterContext.parameter.type)) ||
-        (parameterContext.isAnnotated(InjectMetaURL::class.java) &&
-            URL::class.java.isAssignableFrom(parameterContext.parameter.type)) ||
+        (parameterContext.isAnnotated(InjectIngressURI::class.java) &&
+            URI::class.java.isAssignableFrom(parameterContext.parameter.type)) ||
+        (parameterContext.isAnnotated(InjectAdminURI::class.java) &&
+            URI::class.java.isAssignableFrom(parameterContext.parameter.type)) ||
         (parameterContext.isAnnotated(InjectContainerHandle::class.java) &&
             ContainerHandle::class.java.isAssignableFrom(parameterContext.parameter.type))
   }
@@ -47,10 +47,10 @@ abstract class BaseRestateDeployerExtension : ParameterResolver {
       resolveIngressClient(extensionContext)
     } else if (parameterContext.isAnnotated(InjectContainerPort::class.java)) {
       resolveContainerAddress(parameterContext, extensionContext)
-    } else if (parameterContext.isAnnotated(InjectIngressURL::class.java)) {
-      resolveIngressURL(extensionContext)
-    } else if (parameterContext.isAnnotated(InjectMetaURL::class.java)) {
-      resolveMetaURL(extensionContext)
+    } else if (parameterContext.isAnnotated(InjectIngressURI::class.java)) {
+      resolveIngressURI(extensionContext)
+    } else if (parameterContext.isAnnotated(InjectAdminURI::class.java)) {
+      resolveAdminURI(extensionContext)
     } else if (parameterContext.isAnnotated(InjectContainerHandle::class.java)) {
       resolveContainerHandle(parameterContext, extensionContext)
     } else {
@@ -59,7 +59,7 @@ abstract class BaseRestateDeployerExtension : ParameterResolver {
   }
 
   private fun resolveIngressClient(extensionContext: ExtensionContext): Client {
-    return Client.connect(resolveIngressURL(extensionContext).toString())
+    return Client.connect(resolveIngressURI(extensionContext).toString())
   }
 
   private fun resolveContainerAddress(
@@ -71,22 +71,16 @@ abstract class BaseRestateDeployerExtension : ParameterResolver {
     return getDeployer(extensionContext).getContainerPort(annotation.hostName, annotation.port)
   }
 
-  private fun resolveIngressURL(extensionContext: ExtensionContext): Any {
-    return URL(
-        "http",
-        "127.0.0.1",
-        getDeployer(extensionContext)
-            .getContainerPort(RESTATE_RUNTIME, RUNTIME_INGRESS_ENDPOINT_PORT),
-        "/")
+  private fun resolveIngressURI(extensionContext: ExtensionContext): URI {
+    return URI.create(
+        "http://127.0.0.1:${ getDeployer(extensionContext)
+      .getContainerPort(RESTATE_RUNTIME, RUNTIME_INGRESS_ENDPOINT_PORT)}/")
   }
 
-  private fun resolveMetaURL(extensionContext: ExtensionContext): Any {
-    return URL(
-        "http",
-        "127.0.0.1",
-        getDeployer(extensionContext)
-            .getContainerPort(RESTATE_RUNTIME, RUNTIME_ADMIN_ENDPOINT_PORT),
-        "")
+  private fun resolveAdminURI(extensionContext: ExtensionContext): URI {
+    return URI.create(
+        "http://127.0.0.1:${ getDeployer(extensionContext)
+      .getContainerPort(RESTATE_RUNTIME, RUNTIME_ADMIN_ENDPOINT_PORT)}/")
   }
 
   private fun resolveContainerHandle(

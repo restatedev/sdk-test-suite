@@ -8,13 +8,14 @@
 // https://github.com/restatedev/sdk-test-suite/blob/main/LICENSE
 package dev.restate.sdktesting.tests
 
-import dev.restate.sdk.client.Client
-import dev.restate.sdk.common.Serde
-import dev.restate.sdk.common.Target
+import dev.restate.client.Client
+import dev.restate.common.Request
+import dev.restate.common.Target
 import dev.restate.sdktesting.contracts.CounterClient
-import dev.restate.sdktesting.contracts.CounterDefinitions
-import dev.restate.sdktesting.contracts.NonDeterministicDefinitions
+import dev.restate.sdktesting.contracts.CounterMetadata
+import dev.restate.sdktesting.contracts.NonDeterministicMetadata
 import dev.restate.sdktesting.infra.*
+import dev.restate.serde.Serde
 import org.assertj.core.api.Assertions.*
 import org.awaitility.kotlin.await
 import org.awaitility.kotlin.withAlias
@@ -35,8 +36,7 @@ class NonDeterminismErrors {
       withInvokerRetryPolicy(RetryPolicy.None)
       withServiceSpec(
           ServiceSpec.defaultBuilder()
-              .withServices(
-                  NonDeterministicDefinitions.SERVICE_NAME, CounterDefinitions.SERVICE_NAME))
+              .withServices(NonDeterministicMetadata.SERVICE_NAME, CounterMetadata.SERVICE_NAME))
     }
   }
 
@@ -52,16 +52,17 @@ class NonDeterminismErrors {
   fun method(handlerName: String, @InjectClient ingressClient: Client) = runTest {
     // Increment the count first, this makes sure that the counter service is there.
     val c = CounterClient.fromClient(ingressClient, handlerName)
-    c.add(1, idempotentCallOptions())
+    c.add(1, idempotentCallOptions)
 
     assertThatThrownBy {
           ingressClient.call(
-              Target.virtualObject(
-                  NonDeterministicDefinitions.SERVICE_NAME, handlerName, handlerName),
-              Serde.VOID,
-              Serde.VOID,
-              null,
-              idempotentCallOptions())
+              Request.of(
+                      Target.virtualObject(
+                          NonDeterministicMetadata.SERVICE_NAME, handlerName, handlerName),
+                      Serde.VOID,
+                      Serde.VOID,
+                      null)
+                  .also { idempotentCallOptions(it) })
         }
         .isNotNull()
 

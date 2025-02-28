@@ -21,6 +21,6 @@ annotation class InjectContainerHandle(val hostName: String)
 @Target(AnnotationTarget.VALUE_PARAMETER)
 annotation class InjectContainerPort(val hostName: String, val port: Int)
 
-@Target(AnnotationTarget.VALUE_PARAMETER) annotation class InjectIngressURL
+@Target(AnnotationTarget.VALUE_PARAMETER) annotation class InjectIngressURI
 
-@Target(AnnotationTarget.VALUE_PARAMETER) annotation class InjectMetaURL
+@Target(AnnotationTarget.VALUE_PARAMETER) annotation class InjectAdminURI

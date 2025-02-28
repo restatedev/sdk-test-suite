@@ -8,13 +8,12 @@
 // https://github.com/restatedev/sdk-test-suite/blob/main/LICENSE
 package dev.restate.sdktesting.tests
 
-import dev.restate.sdk.client.Client
+import dev.restate.client.Client
 import dev.restate.sdktesting.contracts.TestUtilsServiceClient
-import dev.restate.sdktesting.contracts.TestUtilsServiceDefinitions
+import dev.restate.sdktesting.contracts.TestUtilsServiceMetadata
 import dev.restate.sdktesting.infra.InjectClient
 import dev.restate.sdktesting.infra.RestateDeployerExtension
 import dev.restate.sdktesting.infra.ServiceSpec
-import java.util.*
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Tag
@@ -29,7 +28,7 @@ class RunFlush {
     @RegisterExtension
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
       withServiceSpec(
-          ServiceSpec.defaultBuilder().withServices(TestUtilsServiceDefinitions.SERVICE_NAME))
+          ServiceSpec.defaultBuilder().withServices(TestUtilsServiceMetadata.SERVICE_NAME))
     }
   }
 
@@ -39,7 +38,7 @@ class RunFlush {
   fun flush(@InjectClient ingressClient: Client) = runTest {
     assertThat(
             TestUtilsServiceClient.fromClient(ingressClient)
-                .countExecutedSideEffects(3, idempotentCallOptions()))
+                .countExecutedSideEffects(3, idempotentCallOptions))
         .isEqualTo(0)
   }
 }
