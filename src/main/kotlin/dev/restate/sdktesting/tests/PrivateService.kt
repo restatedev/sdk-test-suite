@@ -11,15 +11,14 @@ package dev.restate.sdktesting.tests
 import dev.restate.admin.api.ServiceApi
 import dev.restate.admin.client.ApiClient
 import dev.restate.admin.model.ModifyServiceRequest
-import dev.restate.sdk.client.Client
-import dev.restate.sdk.client.IngressException
+import dev.restate.client.Client
+import dev.restate.client.IngressException
 import dev.restate.sdktesting.contracts.*
 import dev.restate.sdktesting.infra.*
-import java.net.URL
+import java.net.URI
 import java.util.*
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
@@ -38,7 +37,7 @@ class PrivateService {
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
       withServiceSpec(
           ServiceSpec.defaultBuilder()
-              .withServices(CounterDefinitions.SERVICE_NAME, ProxyDefinitions.SERVICE_NAME))
+              .withServices(CounterMetadata.SERVICE_NAME, ProxyMetadata.SERVICE_NAME))
     }
   }
 
@@ -46,18 +45,18 @@ class PrivateService {
   @DisplayName(
       "Make a handler ingress private and try to call it both directly and through a proxy service")
   fun privateService(
-      @InjectMetaURL metaURL: URL,
+      @InjectAdminURI adminURI: URI,
       @InjectClient ingressClient: Client,
   ) = runTest {
-    val adminServiceClient = ServiceApi(ApiClient().setHost(metaURL.host).setPort(metaURL.port))
+    val adminServiceClient = ServiceApi(ApiClient().setHost(adminURI.host).setPort(adminURI.port))
     val counterId = UUID.randomUUID().toString()
     val counterClient = CounterClient.fromClient(ingressClient, counterId)
 
-    counterClient.add(1, idempotentCallOptions())
+    counterClient.add(1, idempotentCallOptions)
 
     // Make the service private
     adminServiceClient.modifyService(
-        CounterDefinitions.SERVICE_NAME, ModifyServiceRequest()._public(false))
+        CounterMetadata.SERVICE_NAME, ModifyServiceRequest()._public(false))
 
     // Wait for the service to be private
     await withAlias
@@ -73,15 +72,15 @@ class PrivateService {
     ProxyClient.fromClient(ingressClient)
         .oneWayCall(
             ProxyRequest(
-                CounterDefinitions.SERVICE_NAME,
+                CounterMetadata.SERVICE_NAME,
                 counterId,
                 "add",
                 Json.encodeToString(1).encodeToByteArray()),
-            idempotentCallOptions())
+            idempotentCallOptions)
 
     // Make the service public again
     adminServiceClient.modifyService(
-        CounterDefinitions.SERVICE_NAME, ModifyServiceRequest()._public(true))
+        CounterMetadata.SERVICE_NAME, ModifyServiceRequest()._public(true))
 
     // Wait to get the correct count
     await withAlias

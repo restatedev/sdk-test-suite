@@ -8,7 +8,7 @@
 // https://github.com/restatedev/sdk-test-suite/blob/main/LICENSE
 package dev.restate.sdktesting.tests
 
-import dev.restate.sdk.client.Client
+import dev.restate.client.Client
 import dev.restate.sdktesting.contracts.*
 import dev.restate.sdktesting.infra.InjectClient
 import dev.restate.sdktesting.infra.RestateDeployerExtension
@@ -32,7 +32,7 @@ class CallOrdering {
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
       withServiceSpec(
           ServiceSpec.defaultBuilder()
-              .withServices(ProxyDefinitions.SERVICE_NAME, ListObjectDefinitions.SERVICE_NAME))
+              .withServices(ProxyMetadata.SERVICE_NAME, ListObjectMetadata.SERVICE_NAME))
     }
 
     @JvmStatic
@@ -62,7 +62,7 @@ class CallOrdering {
             ordering.mapIndexed { index, executeAsBackgroundCall ->
               val proxyRequest =
                   ProxyRequest(
-                      ListObjectDefinitions.SERVICE_NAME,
+                      ListObjectMetadata.SERVICE_NAME,
                       listName,
                       "append",
                       Json.encodeToString(index.toString()).encodeToByteArray())
@@ -73,9 +73,9 @@ class CallOrdering {
                 ManyCallRequest(proxyRequest, false, true)
               }
             },
-            idempotentCallOptions())
+            idempotentCallOptions)
 
-    assertThat(ListObjectClient.fromClient(ingressClient, listName).clear(idempotentCallOptions()))
+    assertThat(ListObjectClient.fromClient(ingressClient, listName).clear(idempotentCallOptions))
         .containsExactly("0", "1", "2")
   }
 }

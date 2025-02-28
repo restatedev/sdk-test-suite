@@ -11,10 +11,10 @@ package dev.restate.sdktesting.tests
 import dev.restate.admin.api.InvocationApi
 import dev.restate.admin.client.ApiClient
 import dev.restate.admin.model.DeletionMode
-import dev.restate.sdk.client.Client
+import dev.restate.client.Client
 import dev.restate.sdktesting.contracts.*
 import dev.restate.sdktesting.infra.*
-import java.net.URL
+import java.net.URI
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
 import org.awaitility.kotlin.withAlias
@@ -29,19 +29,20 @@ class KillInvocation {
       withServiceSpec(
           ServiceSpec.defaultBuilder()
               .withServices(
-                  KillTestRunnerDefinitions.SERVICE_NAME,
-                  KillTestSingletonDefinitions.SERVICE_NAME,
-                  AwakeableHolderDefinitions.SERVICE_NAME))
+                  KillTestRunnerMetadata.SERVICE_NAME,
+                  KillTestSingletonMetadata.SERVICE_NAME,
+                  AwakeableHolderMetadata.SERVICE_NAME))
     }
   }
 
   @Test
-  fun kill(@InjectClient ingressClient: Client, @InjectMetaURL metaURL: URL) = runTest {
+  fun kill(@InjectClient ingressClient: Client, @InjectAdminURI adminURI: URI) = runTest {
     val id =
         KillTestRunnerClient.fromClient(ingressClient)
             .send()
-            .startCallTree(idempotentCallOptions())
-            .invocationId
+            .startCallTree(init = idempotentCallOptions)
+            .invocationHandle
+            .invocationId()
     val awakeableHolderClient = AwakeableHolderClient.fromClient(ingressClient, "kill")
     // With this synchronization point we make sure the call tree has been built before killing it.
     await withAlias
@@ -49,10 +50,10 @@ class KillInvocation {
         {
           assertThat(awakeableHolderClient.hasAwakeable()).isTrue()
         }
-    awakeableHolderClient.unlock("cancel", idempotentCallOptions())
+    awakeableHolderClient.unlock("cancel", idempotentCallOptions)
 
     // Kill the invocation
-    val client = InvocationApi(ApiClient().setHost(metaURL.host).setPort(metaURL.port))
+    val client = InvocationApi(ApiClient().setHost(adminURI.host).setPort(adminURI.port))
 
     // The termination signal might arrive before the blocking call to the cancel singleton was
     // made, so we need to retry.

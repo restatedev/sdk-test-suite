@@ -12,10 +12,10 @@ import dev.restate.admin.api.DeploymentApi
 import dev.restate.admin.client.ApiClient
 import dev.restate.admin.model.RegisterDeploymentRequest
 import dev.restate.admin.model.RegisterDeploymentRequestAnyOf
-import dev.restate.sdk.client.Client
+import dev.restate.client.Client
 import dev.restate.sdktesting.contracts.*
 import dev.restate.sdktesting.infra.*
-import java.net.URL
+import java.net.URI
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
 import org.awaitility.kotlin.withAlias
@@ -34,18 +34,18 @@ class UpgradeWithInFlightInvocation {
       withServiceSpec(
           ServiceSpec.builder("version1")
               .withServices(
-                  TestUtilsServiceDefinitions.SERVICE_NAME,
-                  ListObjectDefinitions.SERVICE_NAME,
-                  AwakeableHolderDefinitions.SERVICE_NAME)
+                  TestUtilsServiceMetadata.SERVICE_NAME,
+                  ListObjectMetadata.SERVICE_NAME,
+                  AwakeableHolderMetadata.SERVICE_NAME)
               .withEnv(UPGRADE_TEST_ENV, "v1"))
       withServiceSpec(
           ServiceSpec.builder("version2")
               .skipRegistration()
-              .withServices(TestUtilsServiceDefinitions.SERVICE_NAME)
+              .withServices(TestUtilsServiceMetadata.SERVICE_NAME)
               .withEnv(UPGRADE_TEST_ENV, "v2"))
     }
 
-    fun registerService2(metaURL: URL) {
+    fun registerService2(metaURL: URI) {
       val client = DeploymentApi(ApiClient().setHost(metaURL.host).setPort(metaURL.port))
       client.createDeployment(
           RegisterDeploymentRequest(
@@ -54,7 +54,7 @@ class UpgradeWithInFlightInvocation {
   }
 
   @Test
-  fun inFlightInvocation(@InjectClient ingressClient: Client, @InjectMetaURL metaURL: URL) =
+  fun inFlightInvocation(@InjectClient ingressClient: Client, @InjectAdminURI adminURI: URI) =
       runTest {
         val testUtilsClient = TestUtilsServiceClient.fromClient(ingressClient)
         val awakeableKey = "upgrade"
@@ -70,7 +70,7 @@ class UpgradeWithInFlightInvocation {
                         CreateAwakeableAndAwaitIt(awakeableKey),
                         GetEnvVariable(UPGRADE_TEST_ENV),
                     )),
-                idempotentCallOptions())
+                init = idempotentCallOptions)
 
         // Await until AwakeableHolder has an awakeable
         val awakeableHolderClient = AwakeableHolderClient.fromClient(ingressClient, awakeableKey)
@@ -81,7 +81,7 @@ class UpgradeWithInFlightInvocation {
             }
 
         // Now register the update
-        registerService2(metaURL)
+        registerService2(adminURI)
 
         await withAlias
             "should now use service v2" untilAsserted
@@ -90,7 +90,7 @@ class UpgradeWithInFlightInvocation {
             }
 
         // Now let's resume the awakeable
-        awakeableHolderClient.unlock("unlocked", idempotentCallOptions())
+        awakeableHolderClient.unlock("unlocked", idempotentCallOptions)
 
         // Let's check the list the interpreter appended to contains always v1 env variables
         await withAlias

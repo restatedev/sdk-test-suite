@@ -8,12 +8,11 @@
 // https://github.com/restatedev/sdk-test-suite/blob/main/LICENSE
 package dev.restate.sdktesting.tests
 
-import dev.restate.sdk.client.Client
+import dev.restate.client.Client
 import dev.restate.sdktesting.contracts.TestUtilsServiceClient
-import dev.restate.sdktesting.contracts.TestUtilsServiceDefinitions
+import dev.restate.sdktesting.contracts.TestUtilsServiceMetadata
 import dev.restate.sdktesting.infra.InjectClient
 import dev.restate.sdktesting.infra.RestateDeployerExtension
-import dev.restate.sdktesting.infra.ServiceSpec
 import kotlin.random.Random
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
@@ -27,8 +26,9 @@ class RawHandler {
   companion object {
     @RegisterExtension
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
-      withServiceSpec(
-          ServiceSpec.defaultBuilder().withServices(TestUtilsServiceDefinitions.SERVICE_NAME))
+      withServiceSpec {
+        services = listOf(TestUtilsServiceMetadata.SERVICE_NAME)
+      }
     }
   }
 
@@ -39,8 +39,7 @@ class RawHandler {
     val bytes = Random.nextBytes(100)
 
     assertThat(
-            TestUtilsServiceClient.fromClient(ingressClient)
-                .rawEcho(bytes, idempotentCallOptions()))
+            TestUtilsServiceClient.fromClient(ingressClient).rawEcho(bytes, idempotentCallOptions))
         .isEqualTo(bytes)
   }
 }

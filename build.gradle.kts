@@ -3,8 +3,8 @@ import org.openapitools.generator.gradle.plugin.tasks.GenerateTask
 
 plugins {
   application
-  kotlin("jvm") version "2.0.21"
-  kotlin("plugin.serialization") version "2.0.21"
+  kotlin("jvm") version "2.1.10"
+  kotlin("plugin.serialization") version "2.1.10"
 
   alias(libs.plugins.ksp)
   id("org.jsonschema2pojo") version "1.2.2"
@@ -32,7 +32,8 @@ dependencies {
   implementation(libs.clikt)
   implementation(libs.mordant)
 
-  implementation(libs.restate.sdk.common)
+  implementation(libs.restate.sdk.client)
+  implementation(libs.restate.sdk.client.kotlin)
 
   ksp(libs.restate.sdk.api.kotlin.gen)
   implementation(libs.restate.sdk.api.kotlin)

@@ -12,10 +12,10 @@ import dev.restate.admin.api.DeploymentApi
 import dev.restate.admin.client.ApiClient
 import dev.restate.admin.model.RegisterDeploymentRequest
 import dev.restate.admin.model.RegisterDeploymentRequestAnyOf
-import dev.restate.sdk.client.Client
+import dev.restate.client.Client
 import dev.restate.sdktesting.contracts.*
 import dev.restate.sdktesting.infra.*
-import java.net.URL
+import java.net.URI
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
 import org.awaitility.kotlin.withAlias
@@ -34,18 +34,18 @@ class UpgradeWithNewInvocation {
       withServiceSpec(
           ServiceSpec.builder("version1")
               .withServices(
-                  TestUtilsServiceDefinitions.SERVICE_NAME,
-                  ListObjectDefinitions.SERVICE_NAME,
-                  AwakeableHolderDefinitions.SERVICE_NAME)
+                  TestUtilsServiceMetadata.SERVICE_NAME,
+                  ListObjectMetadata.SERVICE_NAME,
+                  AwakeableHolderMetadata.SERVICE_NAME)
               .withEnv(UPGRADE_TEST_ENV, "v1"))
       withServiceSpec(
           ServiceSpec.builder("version2")
               .skipRegistration()
-              .withServices(TestUtilsServiceDefinitions.SERVICE_NAME)
+              .withServices(TestUtilsServiceMetadata.SERVICE_NAME)
               .withEnv(UPGRADE_TEST_ENV, "v2"))
     }
 
-    fun registerService2(metaURL: URL) {
+    fun registerService2(metaURL: URI) {
       val client = DeploymentApi(ApiClient().setHost(metaURL.host).setPort(metaURL.port))
       client.createDeployment(
           RegisterDeploymentRequest(
@@ -56,16 +56,16 @@ class UpgradeWithNewInvocation {
   @Test
   fun executesNewInvocationWithLatestServiceRevisions(
       @InjectClient ingressClient: Client,
-      @InjectMetaURL metaURL: URL
+      @InjectAdminURI adminURI: URI
   ) = runTest {
     val testUtilsClient = TestUtilsServiceClient.fromClient(ingressClient)
 
     // Execute the first request
-    val firstResult = testUtilsClient.getEnvVariable(UPGRADE_TEST_ENV, idempotentCallOptions())
+    val firstResult = testUtilsClient.getEnvVariable(UPGRADE_TEST_ENV, idempotentCallOptions)
     assertThat(firstResult).isEqualTo("v1")
 
     // Now register the update
-    registerService2(metaURL)
+    registerService2(adminURI)
 
     // After the update, the runtime might not immediately propagate the usage of the new version
     // (this effectively depends on implementation details).

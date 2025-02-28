@@ -8,9 +8,9 @@
 // https://github.com/restatedev/sdk-test-suite/blob/main/LICENSE
 package dev.restate.sdktesting.tests
 
-import dev.restate.sdk.client.Client
+import dev.restate.client.Client
 import dev.restate.sdktesting.contracts.TestUtilsServiceClient
-import dev.restate.sdktesting.contracts.TestUtilsServiceDefinitions
+import dev.restate.sdktesting.contracts.TestUtilsServiceMetadata
 import dev.restate.sdktesting.infra.*
 import java.util.concurrent.TimeUnit
 import kotlin.random.Random
@@ -35,7 +35,7 @@ class SleepWithFailures {
     @RegisterExtension
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
       withServiceSpec(
-          ServiceSpec.defaultBuilder().withServices(TestUtilsServiceDefinitions.SERVICE_NAME))
+          ServiceSpec.defaultBuilder().withServices(TestUtilsServiceMetadata.SERVICE_NAME))
     }
 
     private val DEFAULT_SLEEP_DURATION = 4.seconds
@@ -50,7 +50,7 @@ class SleepWithFailures {
     val job = coroutineScope {
       launch {
         TestUtilsServiceClient.fromClient(ingressClient)
-            .sleepConcurrently(listOf(sleepDuration.inWholeMilliseconds), idempotentCallOptions())
+            .sleepConcurrently(listOf(sleepDuration.inWholeMilliseconds), idempotentCallOptions)
       }
     }
     delay(

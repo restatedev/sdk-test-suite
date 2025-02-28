@@ -8,9 +8,9 @@
 // https://github.com/restatedev/sdk-test-suite/blob/main/LICENSE
 package dev.restate.sdktesting.tests
 
-import dev.restate.sdk.client.Client
+import dev.restate.client.Client
 import dev.restate.sdktesting.contracts.FailingClient
-import dev.restate.sdktesting.contracts.FailingDefinitions
+import dev.restate.sdktesting.contracts.FailingMetadata
 import dev.restate.sdktesting.infra.InjectClient
 import dev.restate.sdktesting.infra.RestateDeployerExtension
 import dev.restate.sdktesting.infra.ServiceSpec
@@ -28,7 +28,7 @@ class RunRetry {
   companion object {
     @RegisterExtension
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
-      withServiceSpec(ServiceSpec.defaultBuilder().withServices(FailingDefinitions.SERVICE_NAME))
+      withServiceSpec(ServiceSpec.defaultBuilder().withServices(FailingMetadata.SERVICE_NAME))
     }
   }
 
@@ -40,7 +40,7 @@ class RunRetry {
 
     assertThat(
             FailingClient.fromClient(ingressClient, UUID.randomUUID().toString())
-                .sideEffectSucceedsAfterGivenAttempts(attempts, idempotentCallOptions()))
+                .sideEffectSucceedsAfterGivenAttempts(attempts, idempotentCallOptions))
         .isGreaterThanOrEqualTo(attempts)
   }
 
@@ -52,7 +52,7 @@ class RunRetry {
 
     assertThat(
             FailingClient.fromClient(ingressClient, UUID.randomUUID().toString())
-                .sideEffectFailsAfterGivenAttempts(attempts, idempotentCallOptions()))
+                .sideEffectFailsAfterGivenAttempts(attempts, idempotentCallOptions))
         .isGreaterThanOrEqualTo(attempts)
   }
 }

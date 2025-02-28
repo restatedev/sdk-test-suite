@@ -8,7 +8,7 @@
 // https://github.com/restatedev/sdk-test-suite/blob/main/LICENSE
 package dev.restate.sdktesting.tests
 
-import dev.restate.sdk.client.Client
+import dev.restate.client.Client
 import dev.restate.sdktesting.contracts.*
 import dev.restate.sdktesting.infra.*
 import java.time.Duration
@@ -29,8 +29,7 @@ class AwaitTimeout {
       withServiceSpec(
           ServiceSpec.defaultBuilder()
               .withServices(
-                  AwakeableHolderDefinitions.SERVICE_NAME,
-                  TestUtilsServiceDefinitions.SERVICE_NAME))
+                  AwakeableHolderMetadata.SERVICE_NAME, TestUtilsServiceMetadata.SERVICE_NAME))
     }
   }
 
@@ -44,7 +43,7 @@ class AwaitTimeout {
                 .createAwakeableAndAwaitIt(
                     CreateAwakeableAndAwaitItRequest(
                         UUID.randomUUID().toString(), timeout.toMillis()),
-                    idempotentCallOptions()))
+                    idempotentCallOptions))
         .isEqualTo(TimeoutResponse)
   }
 }
