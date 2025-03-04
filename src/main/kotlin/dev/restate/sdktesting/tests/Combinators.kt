@@ -25,14 +25,13 @@ import java.time.Duration
 import java.util.UUID
 import kotlinx.coroutines.async
 import org.assertj.core.api.Assertions.assertThat
-import org.assertj.core.api.Assertions.assertThatThrownBy
-import org.assertj.core.api.InstanceOfAssertFactories
 import org.awaitility.kotlin.await
 import org.awaitility.kotlin.withAlias
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.RegisterExtension
+import org.junit.jupiter.api.fail
 import org.junit.jupiter.api.parallel.Execution
 import org.junit.jupiter.api.parallel.ExecutionMode
 
@@ -72,18 +71,16 @@ class Combinators {
         val testId = UUID.randomUUID().toString()
         val timeout = Duration.ofMillis(100L)
 
-        assertThatThrownBy {
-              ingressClient.call(
-                  VirtualObjectCommandInterpreterRequests.interpretCommands(
-                      testId,
-                      InterpretRequest(
-                          listOf(
-                              AwaitAwakeableOrTimeout("should-timeout-awk", timeout.toMillis()))),
-                      idempotentCallOptions))
-            }
-            .asInstanceOf(InstanceOfAssertFactories.type(IngressException::class.java))
-            .extracting({ it.message }, InstanceOfAssertFactories.STRING)
-            .contains("await-timeout")
+        try {
+          VirtualObjectCommandInterpreterClient.fromClient(ingressClient, testId)
+              .interpretCommands(
+                  InterpretRequest(
+                      listOf(AwaitAwakeableOrTimeout("should-timeout-awk", timeout.toMillis()))),
+                  idempotentCallOptions)
+          fail { "Interpret command succeeded" }
+        } catch (ex: IngressException) {
+          assertThat(ex).message().contains("await-timeout")
+        }
       }
 
   @Test
