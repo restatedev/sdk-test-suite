@@ -10,7 +10,10 @@ package dev.restate.sdktesting.infra
 
 sealed interface ServiceDeploymentConfig
 
-data class ContainerServiceDeploymentConfig(val imageName: String) : ServiceDeploymentConfig
+data class ContainerServiceDeploymentConfig(
+    val imageName: String,
+    val additionalEnvs: Map<String, String>
+) : ServiceDeploymentConfig
 
 data class LocalForwardServiceDeploymentConfig(val port: Int = 9080) : ServiceDeploymentConfig
 

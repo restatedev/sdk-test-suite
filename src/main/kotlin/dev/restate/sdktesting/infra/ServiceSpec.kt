@@ -72,7 +72,7 @@ data class ServiceSpec(
                 name,
                 network,
                 restateURI,
-                totalEnvs)
+                totalEnvs + serviceConfig.additionalEnvs)
       }
       is LocalForwardServiceDeploymentConfig -> {
         Testcontainers.exposeHostPorts(serviceConfig.port)

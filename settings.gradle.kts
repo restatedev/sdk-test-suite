@@ -59,6 +59,8 @@ dependencyResolutionManagement {
       // Keep this in sync with the version used by testcontainers
       library("docker", "com.github.docker-java:docker-java:3.4.1")
 
+      library("dotenv", "io.github.cdimascio:dotenv-kotlin:6.5.1")
+
       version("awaitility", "4.3.0")
       library("awaitility", "org.awaitility", "awaitility-kotlin").versionRef("awaitility")
 
