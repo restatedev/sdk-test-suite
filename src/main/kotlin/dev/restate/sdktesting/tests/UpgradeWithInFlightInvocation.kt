@@ -92,9 +92,21 @@ class UpgradeWithInFlightInvocation {
 
         // Let's check the list the interpreter appended to contains always v1 env variables
         await withAlias
-            "both v1 and v2 should be present in the list object" untilAsserted
+            "old invocation remains on v1" untilAsserted
             {
               assertThat(interpreter.getResults()).containsExactly("v1", "unlocked", "v1")
+            }
+
+        val newInterpreter =
+            VirtualObjectCommandInterpreterClient.fromClient(
+                ingressClient, UUID.randomUUID().toString())
+        await withAlias
+            "new invocations should use service v2" untilAsserted
+            {
+              assertThat(
+                      newInterpreter.interpretCommands(
+                          InterpretRequest.getEnvVariable(UPGRADE_TEST_ENV)))
+                  .isEqualTo("v2")
             }
       }
 }
