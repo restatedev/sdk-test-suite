@@ -28,6 +28,7 @@ import com.github.ajalt.mordant.terminal.Terminal
 import dev.restate.sdktesting.infra.*
 import dev.restate.sdktesting.junit.ExecutionResult
 import dev.restate.sdktesting.junit.TestSuites
+import io.github.cdimascio.dotenv.Dotenv
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -122,14 +123,25 @@ Run test suite, executing the service as container.
           .help(
               "If set, runs tests in parallel. We suggest running tests sequentially when using podman")
           .flag("--sequential", default = true)
+  val serviceContainerEnvFile by
+      option("--service-container-env-file").help(".env file to apply to service container")
   val imageName by argument()
 
   override fun run() {
     val terminal = Terminal()
 
+    val additionalServiceEnvs =
+        serviceContainerEnvFile
+            ?.let {
+              Dotenv.configure().filename(it).load().entries().associate { it.key to it.value }
+            }
+            .orEmpty()
+
     val restateDeployerConfig =
         RestateDeployerConfig(
-            mapOf(ServiceSpec.DEFAULT_SERVICE_NAME to ContainerServiceDeploymentConfig(imageName)),
+            mapOf(
+                ServiceSpec.DEFAULT_SERVICE_NAME to
+                    ContainerServiceDeploymentConfig(imageName, additionalServiceEnvs)),
         )
 
     // Register global config of the deployer

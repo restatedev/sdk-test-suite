@@ -46,6 +46,8 @@ dependencies {
   implementation(libs.testcontainers.kafka)
   implementation(libs.docker)
 
+  implementation(libs.dotenv)
+
   implementation(libs.log4j.api)
   implementation(libs.log4j.core)
   implementation(libs.log4j.slf4j)

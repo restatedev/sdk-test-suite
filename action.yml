@@ -17,6 +17,9 @@ inputs:
   exclusionsFile:
     required: false
     description: Exclusions file
+  serviceContainerEnvFile:
+    required: false
+    description: Service container env file
 outputs: {}
 runs:
   using: "composite"
@@ -52,7 +55,7 @@ runs:
       env:
         RESTATE_CONTAINER_IMAGE: ${{ inputs.restateContainerImage }}
       shell: bash
-      run: java -jar restate-sdk-test-suite.jar run ${{ inputs.exclusionsFile != '' && format('--exclusions-file={0}', inputs.exclusionsFile) || '' }} --report-dir=test-report ${{ inputs.serviceContainerImage }}
+      run: java -jar restate-sdk-test-suite.jar run ${{ inputs.exclusionsFile != '' && format('--exclusions-file={0}', inputs.exclusionsFile) || '' }} ${{ inputs.serviceContainerEnvFile != '' && format('--service-container-env-file={0}', inputs.serviceContainerEnvFile) || '' }} --report-dir=test-report ${{ inputs.serviceContainerImage }}
 
     # Upload logs and publish test result
     - uses: actions/upload-artifact@v4
