@@ -45,7 +45,7 @@ class Cancellation {
 
   @ParameterizedTest(name = "cancel blocked invocation on {0} from Admin API")
   @EnumSource(value = BlockingOperation::class)
-  fun cancel(
+  fun cancelFromAdminAPI(
       blockingOperation: BlockingOperation,
       @InjectClient ingressClient: Client,
       @InjectAdminURI adminURI: URI,
@@ -61,7 +61,7 @@ class Cancellation {
             .invocationHandle()
             .invocationId()
 
-    val awakeableHolderClient = AwakeableHolderClient.fromClient(ingressClient, "cancel")
+    val awakeableHolderClient = AwakeableHolderClient.fromClient(ingressClient, key)
     await withAlias
         "awakeable is registered" untilAsserted
         {
@@ -90,7 +90,7 @@ class Cancellation {
 
   @ParameterizedTest(name = "cancel blocked invocation on {0} from Context")
   @EnumSource(value = BlockingOperation::class)
-  fun cancel(
+  fun cancelFromContext(
       blockingOperation: BlockingOperation,
       @InjectClient ingressClient: Client,
   ) = runTest {
@@ -108,7 +108,7 @@ class Cancellation {
                 handlerName = "startTest",
                 message = Json.encodeToString(blockingOperation).toByteArray()))
 
-    val awakeableHolderClient = AwakeableHolderClient.fromClient(ingressClient, "cancel")
+    val awakeableHolderClient = AwakeableHolderClient.fromClient(ingressClient, key)
 
     await withAlias
         "awakeable is registered" untilAsserted
