@@ -44,7 +44,8 @@ class State {
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   fun add(@InjectClient ingressClient: Client) = runTest {
-    val counterClient = CounterClient.fromClient(ingressClient, "add")
+    val counterId = UUID.randomUUID().toString()
+    val counterClient = CounterClient.fromClient(ingressClient, counterId)
     val res1 = counterClient.add(1, idempotentCallOptions)
     assertThat(res1.oldValue).isEqualTo(0)
     assertThat(res1.newValue).isEqualTo(1)
