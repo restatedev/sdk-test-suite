@@ -9,7 +9,6 @@
 package dev.restate.sdktesting.tests
 
 import dev.restate.client.Client
-import dev.restate.client.IngressException
 import dev.restate.sdktesting.contracts.*
 import dev.restate.sdktesting.contracts.VirtualObjectCommandInterpreter.AwaitAny
 import dev.restate.sdktesting.contracts.VirtualObjectCommandInterpreter.AwaitAnySuccessful
@@ -31,7 +30,6 @@ import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.RegisterExtension
-import org.junit.jupiter.api.fail
 import org.junit.jupiter.api.parallel.Execution
 import org.junit.jupiter.api.parallel.ExecutionMode
 
@@ -71,16 +69,19 @@ class Combinators {
         val testId = UUID.randomUUID().toString()
         val timeout = Duration.ofMillis(100L)
 
-        try {
-          VirtualObjectCommandInterpreterClient.fromClient(ingressClient, testId)
-              .interpretCommands(
-                  InterpretRequest(
-                      listOf(AwaitAwakeableOrTimeout("should-timeout-awk", timeout.toMillis()))),
-                  idempotentCallOptions)
-          fail { "Interpret command succeeded" }
-        } catch (ex: IngressException) {
-          assertThat(ex).message().contains("await-timeout")
-        }
+        assertThat(
+                runCatching {
+                      VirtualObjectCommandInterpreterClient.fromClient(ingressClient, testId)
+                          .interpretCommands(
+                              InterpretRequest(
+                                  listOf(
+                                      AwaitAwakeableOrTimeout(
+                                          "should-timeout-awk", timeout.toMillis()))),
+                              idempotentCallOptions)
+                    }
+                    .exceptionOrNull())
+            .message()
+            .contains("await-timeout")
       }
 
   @Test

@@ -15,6 +15,7 @@ import dev.restate.client.Client
 import dev.restate.sdktesting.contracts.*
 import dev.restate.sdktesting.infra.*
 import java.net.URI
+import java.util.UUID
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
 import org.awaitility.kotlin.withAlias
@@ -37,13 +38,14 @@ class KillInvocation {
 
   @Test
   fun kill(@InjectClient ingressClient: Client, @InjectAdminURI adminURI: URI) = runTest {
+    val key = UUID.randomUUID().toString()
     val id =
-        KillTestRunnerClient.fromClient(ingressClient)
+        KillTestRunnerClient.fromClient(ingressClient, key)
             .send()
             .startCallTree(init = idempotentCallOptions)
             .invocationHandle
             .invocationId()
-    val awakeableHolderClient = AwakeableHolderClient.fromClient(ingressClient, "kill")
+    val awakeableHolderClient = AwakeableHolderClient.fromClient(ingressClient, key)
     // With this synchronization point we make sure the call tree has been built before killing it.
     await withAlias
         "awakeable is registered" untilAsserted
@@ -62,7 +64,7 @@ class KillInvocation {
     await withAlias
         "singleton service is unlocked after killing the call tree" untilAsserted
         {
-          KillTestSingletonClient.fromClient(ingressClient, "").isUnlocked()
+          KillTestSingletonClient.fromClient(ingressClient, key).isUnlocked()
         }
   }
 }

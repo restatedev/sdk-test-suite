@@ -20,6 +20,7 @@ import dev.restate.sdktesting.infra.*
 import java.net.URI
 import java.util.*
 import java.util.concurrent.TimeUnit
+import kotlin.random.Random
 import kotlinx.serialization.json.Json
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
@@ -285,5 +286,16 @@ class Ingress {
               headers = mapOf(headerName to headerValue)
             })
         .containsEntry(headerName, headerValue)
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  @DisplayName("Raw input and raw output")
+  fun rawHandler(@InjectClient ingressClient: Client) = runTest {
+    val bytes = Random.nextBytes(100)
+
+    assertThat(
+            TestUtilsServiceClient.fromClient(ingressClient).rawEcho(bytes, idempotentCallOptions))
+        .isEqualTo(bytes)
   }
 }
