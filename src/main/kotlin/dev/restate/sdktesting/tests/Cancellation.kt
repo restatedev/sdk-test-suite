@@ -106,7 +106,8 @@ class Cancellation {
                 serviceName = CancelTestRunnerMetadata.SERVICE_NAME,
                 virtualObjectKey = key,
                 handlerName = "startTest",
-                message = Json.encodeToString(blockingOperation).toByteArray()))
+                message = Json.encodeToString(blockingOperation).toByteArray()),
+            idempotentCallOptions)
 
     val awakeableHolderClient = AwakeableHolderClient.fromClient(ingressClient, key)
 
@@ -116,7 +117,7 @@ class Cancellation {
           assertThat(awakeableHolderClient.hasAwakeable()).isTrue()
         }
 
-    awakeableHolderClient.unlock("cancel")
+    awakeableHolderClient.unlock("cancel", idempotentCallOptions)
 
     // The termination signal might arrive before the blocking call to the cancel singleton was
     // made, so we need to retry.
@@ -128,6 +129,10 @@ class Cancellation {
     }
 
     // Check that the singleton service is unlocked
-    blockingServiceClient.isUnlocked()
+    await withAlias
+        "blocking service is unlocked" untilAsserted
+        {
+          blockingServiceClient.isUnlocked()
+        }
   }
 }
