@@ -136,7 +136,7 @@ class ServiceToServiceCommunication {
 
           val jsonResult = Json.decodeFromString<CounterUpdateResponse>(rawResult.decodeToString())
 
-          assertThat(jsonResult).isEqualTo(Json.encodeToString(CounterUpdateResponse(0, 1)))
+          assertThat(jsonResult).isEqualTo(CounterUpdateResponse(0, 1))
         }
 
     await untilAsserted { assertThat(counterClient.get()).isEqualTo(1L) }
