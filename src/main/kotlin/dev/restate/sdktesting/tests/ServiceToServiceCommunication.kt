@@ -125,15 +125,18 @@ class ServiceToServiceCommunication {
     // We do this in a loop, because there can be failures
     await untilAsserted
         {
-          assertThat(
-                  proxyClient.call(
-                      ProxyRequest(
-                          CounterMetadata.SERVICE_NAME,
-                          counterId,
-                          "add",
-                          Json.encodeToString(1).encodeToByteArray(),
-                          idempotencyKey = idempotencyKey)))
-              .isEqualTo(Json.encodeToString(CounterUpdateResponse(0, 1)).toByteArray())
+          val rawResult =
+              proxyClient.call(
+                  ProxyRequest(
+                      CounterMetadata.SERVICE_NAME,
+                      counterId,
+                      "add",
+                      Json.encodeToString(1).encodeToByteArray(),
+                      idempotencyKey = idempotencyKey))
+
+          val jsonResult = Json.decodeFromString<CounterUpdateResponse>(rawResult.decodeToString())
+
+          assertThat(jsonResult).isEqualTo(Json.encodeToString(CounterUpdateResponse(0, 1)))
         }
 
     await untilAsserted { assertThat(counterClient.get()).isEqualTo(1L) }
