@@ -33,7 +33,7 @@ private val LOG = LogManager.getLogger("dev.restate.sdktesting.tests")
 suspend infix fun ConditionFactory.untilAsserted(fn: suspend () -> Unit) {
   withContext(currentCoroutineContext() + Dispatchers.IO) {
     val coroutineContext = currentCoroutineContext()
-    this@untilAsserted.ignoreExceptionsMatching { it !is TimeoutCancellationException }
+    this@untilAsserted.ignoreExceptions()
         .logging { LOG.info(it) }
         .pollInSameThread()
         .untilAsserted { runBlocking(coroutineContext) { fn() } }
