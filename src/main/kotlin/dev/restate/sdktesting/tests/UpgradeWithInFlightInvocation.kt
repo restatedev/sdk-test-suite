@@ -13,13 +13,12 @@ import dev.restate.admin.client.ApiClient
 import dev.restate.admin.model.RegisterDeploymentRequest
 import dev.restate.admin.model.RegisterDeploymentRequestAnyOf
 import dev.restate.client.Client
+import dev.restate.sdktesting.contracts.*
 import dev.restate.sdktesting.contracts.VirtualObjectCommandInterpreter.AwaitOne
 import dev.restate.sdktesting.contracts.VirtualObjectCommandInterpreter.CreateAwakeable
 import dev.restate.sdktesting.contracts.VirtualObjectCommandInterpreter.GetEnvVariable
 import dev.restate.sdktesting.contracts.VirtualObjectCommandInterpreter.InterpretRequest
 import dev.restate.sdktesting.contracts.VirtualObjectCommandInterpreter.ResolveAwakeable
-import dev.restate.sdktesting.contracts.VirtualObjectCommandInterpreterClient
-import dev.restate.sdktesting.contracts.VirtualObjectCommandInterpreterMetadata
 import dev.restate.sdktesting.infra.*
 import java.net.URI
 import java.util.UUID
@@ -40,12 +39,12 @@ class UpgradeWithInFlightInvocation {
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
       withServiceSpec(
           ServiceSpec.builder("version1")
-              .withServices(VirtualObjectCommandInterpreterMetadata.SERVICE_NAME)
+              .withServices(VirtualObjectCommandInterpreterHandlers.Metadata.SERVICE_NAME)
               .withEnv(UPGRADE_TEST_ENV, "v1"))
       withServiceSpec(
           ServiceSpec.builder("version2")
               .skipRegistration()
-              .withServices(VirtualObjectCommandInterpreterMetadata.SERVICE_NAME)
+              .withServices(VirtualObjectCommandInterpreterHandlers.Metadata.SERVICE_NAME)
               .withEnv(UPGRADE_TEST_ENV, "v2"))
     }
 

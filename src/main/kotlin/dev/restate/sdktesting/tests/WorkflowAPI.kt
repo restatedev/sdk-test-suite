@@ -11,8 +11,7 @@ package dev.restate.sdktesting.tests
 import dev.restate.client.Client
 import dev.restate.client.SendResponse.SendStatus
 import dev.restate.client.kotlin.getOutputSuspend
-import dev.restate.sdktesting.contracts.BlockAndWaitWorkflowClient
-import dev.restate.sdktesting.contracts.BlockAndWaitWorkflowMetadata
+import dev.restate.sdktesting.contracts.*
 import dev.restate.sdktesting.infra.*
 import java.util.*
 import org.assertj.core.api.Assertions.assertThat
@@ -32,7 +31,8 @@ class WorkflowAPI {
     @RegisterExtension
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
       withServiceSpec(
-          ServiceSpec.defaultBuilder().withServices(BlockAndWaitWorkflowMetadata.SERVICE_NAME))
+          ServiceSpec.defaultBuilder()
+              .withServices(BlockAndWaitWorkflowHandlers.Metadata.SERVICE_NAME))
     }
   }
 

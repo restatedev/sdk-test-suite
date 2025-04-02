@@ -8,13 +8,12 @@
 // https://github.com/restatedev/sdk-test-suite/blob/main/LICENSE
 package dev.restate.sdktesting.tests
 
-import dev.restate.common.Request
+import dev.restate.common.RequestBuilder
 import dev.restate.sdktesting.contracts.VirtualObjectCommandInterpreter
 import java.util.UUID
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.TestScope
@@ -24,7 +23,7 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.kotlin.additionalLoggingContext
 import org.awaitility.core.ConditionFactory
 
-val idempotentCallOptions: Request.Builder<*, *>.() -> Unit = {
+val idempotentCallOptions: RequestBuilder<*, *>.() -> Unit = {
   idempotencyKey = UUID.randomUUID().toString()
 }
 
@@ -33,7 +32,7 @@ private val LOG = LogManager.getLogger("dev.restate.sdktesting.tests")
 suspend infix fun ConditionFactory.untilAsserted(fn: suspend () -> Unit) {
   withContext(currentCoroutineContext() + Dispatchers.IO) {
     val coroutineContext = currentCoroutineContext()
-    this@untilAsserted.ignoreExceptionsMatching { it !is TimeoutCancellationException }
+    this@untilAsserted.ignoreExceptions()
         .logging { LOG.info(it) }
         .pollInSameThread()
         .untilAsserted { runBlocking(coroutineContext) { fn() } }

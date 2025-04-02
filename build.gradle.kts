@@ -32,11 +32,9 @@ dependencies {
   implementation(libs.clikt)
   implementation(libs.mordant)
 
-  implementation(libs.restate.sdk.client)
-  implementation(libs.restate.sdk.client.kotlin)
-
   ksp(libs.restate.sdk.api.kotlin.gen)
   implementation(libs.restate.sdk.api.kotlin)
+  implementation(libs.restate.sdk.client.kotlin)
 
   implementation(libs.junit.all)
   implementation(libs.junit.launcher)

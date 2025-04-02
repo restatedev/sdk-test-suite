@@ -9,8 +9,7 @@
 package dev.restate.sdktesting.tests
 
 import dev.restate.client.Client
-import dev.restate.sdktesting.contracts.FailingClient
-import dev.restate.sdktesting.contracts.FailingMetadata
+import dev.restate.sdktesting.contracts.*
 import dev.restate.sdktesting.infra.InjectClient
 import dev.restate.sdktesting.infra.RestateDeployerExtension
 import dev.restate.sdktesting.infra.ServiceSpec
@@ -28,7 +27,8 @@ class RunRetry {
   companion object {
     @RegisterExtension
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
-      withServiceSpec(ServiceSpec.defaultBuilder().withServices(FailingMetadata.SERVICE_NAME))
+      withServiceSpec(
+          ServiceSpec.defaultBuilder().withServices(FailingHandlers.Metadata.SERVICE_NAME))
     }
   }
 

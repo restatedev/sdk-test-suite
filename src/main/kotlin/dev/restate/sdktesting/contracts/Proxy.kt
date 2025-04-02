@@ -11,6 +11,7 @@ package dev.restate.sdktesting.contracts
 import dev.restate.sdk.annotation.Handler
 import dev.restate.sdk.annotation.Service
 import dev.restate.sdk.kotlin.Context
+import jdk.jfr.Name
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -36,7 +37,8 @@ data class ManyCallRequest(
     val awaitAtTheEnd: Boolean
 )
 
-@Service(name = "Proxy")
+@Service
+@Name("Proxy")
 interface Proxy {
   // Bytes are encoded as array of numbers
   @Handler suspend fun call(context: Context, request: ProxyRequest): ByteArray

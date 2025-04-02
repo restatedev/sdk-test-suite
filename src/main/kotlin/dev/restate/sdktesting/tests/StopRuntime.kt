@@ -10,8 +10,7 @@ package dev.restate.sdktesting.tests
 
 import dev.restate.client.ClientRequestOptions
 import dev.restate.client.jdk.JdkClient
-import dev.restate.sdktesting.contracts.CounterClient
-import dev.restate.sdktesting.contracts.CounterMetadata
+import dev.restate.sdktesting.contracts.*
 import dev.restate.sdktesting.infra.*
 import dev.restate.serde.SerdeFactory
 import java.net.http.HttpClient
@@ -38,7 +37,8 @@ class StopRuntime {
     @JvmStatic
     @RegisterExtension
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
-      withServiceSpec(ServiceSpec.defaultBuilder().withServices(CounterMetadata.SERVICE_NAME))
+      withServiceSpec(
+          ServiceSpec.defaultBuilder().withServices(CounterHandlers.Metadata.SERVICE_NAME))
     }
   }
 

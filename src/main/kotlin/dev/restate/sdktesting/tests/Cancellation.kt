@@ -35,11 +35,11 @@ class Cancellation {
       withServiceSpec(
           ServiceSpec.defaultBuilder()
               .withServices(
-                  CancelTestRunnerMetadata.SERVICE_NAME,
-                  CancelTestBlockingServiceMetadata.SERVICE_NAME,
-                  AwakeableHolderMetadata.SERVICE_NAME,
-                  ProxyMetadata.SERVICE_NAME,
-                  TestUtilsServiceMetadata.SERVICE_NAME))
+                  CancelTestRunnerHandlers.Metadata.SERVICE_NAME,
+                  CancelTestBlockingServiceHandlers.Metadata.SERVICE_NAME,
+                  AwakeableHolderHandlers.Metadata.SERVICE_NAME,
+                  ProxyHandlers.Metadata.SERVICE_NAME,
+                  TestUtilsServiceHandlers.Metadata.SERVICE_NAME))
     }
   }
 
@@ -103,7 +103,7 @@ class Cancellation {
     val id =
         proxyClient.oneWayCall(
             ProxyRequest(
-                serviceName = CancelTestRunnerMetadata.SERVICE_NAME,
+                serviceName = CancelTestRunnerHandlers.Metadata.SERVICE_NAME,
                 virtualObjectKey = key,
                 handlerName = "startTest",
                 message = Json.encodeToString(blockingOperation).toByteArray()),

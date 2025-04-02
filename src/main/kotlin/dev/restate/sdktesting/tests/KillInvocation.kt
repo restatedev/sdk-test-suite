@@ -30,9 +30,9 @@ class KillInvocation {
       withServiceSpec(
           ServiceSpec.defaultBuilder()
               .withServices(
-                  KillTestRunnerMetadata.SERVICE_NAME,
-                  KillTestSingletonMetadata.SERVICE_NAME,
-                  AwakeableHolderMetadata.SERVICE_NAME))
+                  KillTestRunnerHandlers.Metadata.SERVICE_NAME,
+                  KillTestSingletonHandlers.Metadata.SERVICE_NAME,
+                  AwakeableHolderHandlers.Metadata.SERVICE_NAME))
     }
   }
 

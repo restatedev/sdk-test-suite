@@ -10,8 +10,10 @@ package dev.restate.sdktesting.contracts
 
 import dev.restate.sdk.annotation.*
 import dev.restate.sdk.kotlin.ObjectContext
+import jdk.jfr.Name
 
-@VirtualObject(name = "ListObject")
+@VirtualObject
+@Name("ListObject")
 interface ListObject {
   /** Append a value to the list object */
   @Handler suspend fun append(context: ObjectContext, value: String)

@@ -9,10 +9,7 @@
 package dev.restate.sdktesting.tests
 
 import dev.restate.client.Client
-import dev.restate.sdktesting.contracts.CounterClient
-import dev.restate.sdktesting.contracts.CounterMetadata
-import dev.restate.sdktesting.contracts.FailingClient
-import dev.restate.sdktesting.contracts.FailingMetadata
+import dev.restate.sdktesting.contracts.*
 import dev.restate.sdktesting.infra.*
 import java.util.*
 import org.assertj.core.api.Assertions.assertThat
@@ -33,7 +30,8 @@ class UserErrors {
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
       withServiceSpec(
           ServiceSpec.defaultBuilder()
-              .withServices(FailingMetadata.SERVICE_NAME, CounterMetadata.SERVICE_NAME))
+              .withServices(
+                  FailingHandlers.Metadata.SERVICE_NAME, CounterHandlers.Metadata.SERVICE_NAME))
     }
   }
 

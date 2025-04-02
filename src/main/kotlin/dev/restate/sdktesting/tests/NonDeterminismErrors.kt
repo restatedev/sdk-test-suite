@@ -11,9 +11,7 @@ package dev.restate.sdktesting.tests
 import dev.restate.client.Client
 import dev.restate.common.Request
 import dev.restate.common.Target
-import dev.restate.sdktesting.contracts.CounterClient
-import dev.restate.sdktesting.contracts.CounterMetadata
-import dev.restate.sdktesting.contracts.NonDeterministicMetadata
+import dev.restate.sdktesting.contracts.*
 import dev.restate.sdktesting.infra.*
 import dev.restate.serde.Serde
 import org.assertj.core.api.Assertions.*
@@ -36,7 +34,9 @@ class NonDeterminismErrors {
       withInvokerRetryPolicy(RetryPolicy.None)
       withServiceSpec(
           ServiceSpec.defaultBuilder()
-              .withServices(NonDeterministicMetadata.SERVICE_NAME, CounterMetadata.SERVICE_NAME))
+              .withServices(
+                  NonDeterministicHandlers.Metadata.SERVICE_NAME,
+                  CounterHandlers.Metadata.SERVICE_NAME))
     }
   }
 
@@ -58,7 +58,7 @@ class NonDeterminismErrors {
           ingressClient.call(
               Request.of(
                       Target.virtualObject(
-                          NonDeterministicMetadata.SERVICE_NAME, handlerName, handlerName),
+                          NonDeterministicHandlers.Metadata.SERVICE_NAME, handlerName, handlerName),
                       Serde.VOID,
                       Serde.VOID,
                       null)

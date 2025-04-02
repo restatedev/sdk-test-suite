@@ -37,7 +37,8 @@ class PrivateService {
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
       withServiceSpec(
           ServiceSpec.defaultBuilder()
-              .withServices(CounterMetadata.SERVICE_NAME, ProxyMetadata.SERVICE_NAME))
+              .withServices(
+                  CounterHandlers.Metadata.SERVICE_NAME, ProxyHandlers.Metadata.SERVICE_NAME))
     }
   }
 
@@ -56,7 +57,7 @@ class PrivateService {
 
     // Make the service private
     adminServiceClient.modifyService(
-        CounterMetadata.SERVICE_NAME, ModifyServiceRequest()._public(false))
+        CounterHandlers.Metadata.SERVICE_NAME, ModifyServiceRequest()._public(false))
 
     // Wait for the service to be private
     await withAlias
@@ -72,7 +73,7 @@ class PrivateService {
     ProxyClient.fromClient(ingressClient)
         .oneWayCall(
             ProxyRequest(
-                CounterMetadata.SERVICE_NAME,
+                CounterHandlers.Metadata.SERVICE_NAME,
                 counterId,
                 "add",
                 Json.encodeToString(1).encodeToByteArray()),
@@ -80,7 +81,7 @@ class PrivateService {
 
     // Make the service public again
     adminServiceClient.modifyService(
-        CounterMetadata.SERVICE_NAME, ModifyServiceRequest()._public(true))
+        CounterHandlers.Metadata.SERVICE_NAME, ModifyServiceRequest()._public(true))
 
     // Wait to get the correct count
     await withAlias

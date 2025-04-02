@@ -12,6 +12,7 @@ import dev.restate.client.Client
 import dev.restate.client.kotlin.getOutputSuspend
 import dev.restate.common.Target
 import dev.restate.sdktesting.contracts.*
+import dev.restate.sdktesting.contracts.Counter.CounterUpdateResponse
 import dev.restate.sdktesting.infra.InjectClient
 import dev.restate.sdktesting.infra.RestateDeployerExtension
 import dev.restate.sdktesting.infra.ServiceSpec
@@ -39,9 +40,9 @@ class ServiceToServiceCommunication {
       withServiceSpec(
           ServiceSpec.defaultBuilder()
               .withServices(
-                  ProxyMetadata.SERVICE_NAME,
-                  TestUtilsServiceMetadata.SERVICE_NAME,
-                  CounterMetadata.SERVICE_NAME))
+                  ProxyHandlers.Metadata.SERVICE_NAME,
+                  TestUtilsServiceHandlers.Metadata.SERVICE_NAME,
+                  CounterHandlers.Metadata.SERVICE_NAME))
     }
   }
 
@@ -54,7 +55,7 @@ class ServiceToServiceCommunication {
     assertThat(
             proxyClient.call(
                 ProxyRequest(
-                    TestUtilsServiceMetadata.SERVICE_NAME,
+                    TestUtilsServiceHandlers.Metadata.SERVICE_NAME,
                     null,
                     "uppercaseEcho",
                     Json.encodeToString("ping").encodeToByteArray()),
@@ -71,7 +72,7 @@ class ServiceToServiceCommunication {
 
     proxyClient.oneWayCall(
         ProxyRequest(
-            CounterMetadata.SERVICE_NAME,
+            CounterHandlers.Metadata.SERVICE_NAME,
             counterId,
             "add",
             Json.encodeToString(1).encodeToByteArray()),
@@ -93,7 +94,7 @@ class ServiceToServiceCommunication {
         {
           proxyClient.oneWayCall(
               ProxyRequest(
-                  CounterMetadata.SERVICE_NAME,
+                  CounterHandlers.Metadata.SERVICE_NAME,
                   counterId,
                   "add",
                   Json.encodeToString(1).encodeToByteArray(),
@@ -105,9 +106,9 @@ class ServiceToServiceCommunication {
     assertThat(
             ingressClient
                 .idempotentInvocationHandle(
-                    Target.virtualObject(CounterMetadata.SERVICE_NAME, counterId, "add"),
+                    Target.virtualObject(CounterHandlers.Metadata.SERVICE_NAME, counterId, "add"),
                     idempotencyKey,
-                    CounterMetadata.Serde.ADD_OUTPUT)
+                    CounterHandlers.Metadata.Serde.ADD_OUTPUT)
                 .getOutputSuspend()
                 .response
                 .value)
@@ -128,7 +129,7 @@ class ServiceToServiceCommunication {
           val rawResult =
               proxyClient.call(
                   ProxyRequest(
-                      CounterMetadata.SERVICE_NAME,
+                      CounterHandlers.Metadata.SERVICE_NAME,
                       counterId,
                       "add",
                       Json.encodeToString(1).encodeToByteArray(),
@@ -144,9 +145,9 @@ class ServiceToServiceCommunication {
     assertThat(
             ingressClient
                 .idempotentInvocationHandle(
-                    Target.virtualObject(CounterMetadata.SERVICE_NAME, counterId, "add"),
+                    Target.virtualObject(CounterHandlers.Metadata.SERVICE_NAME, counterId, "add"),
                     idempotencyKey,
-                    CounterMetadata.Serde.ADD_OUTPUT)
+                    CounterHandlers.Metadata.Serde.ADD_OUTPUT)
                 .getOutputSuspend()
                 .response
                 .value)
@@ -167,7 +168,7 @@ class ServiceToServiceCommunication {
           for (i in 1..10) {
             proxyClient.oneWayCall(
                 ProxyRequest(
-                    CounterMetadata.SERVICE_NAME,
+                    CounterHandlers.Metadata.SERVICE_NAME,
                     counterId,
                     "add",
                     Json.encodeToString(1).encodeToByteArray(),

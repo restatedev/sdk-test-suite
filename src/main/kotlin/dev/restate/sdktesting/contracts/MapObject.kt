@@ -11,12 +11,14 @@ package dev.restate.sdktesting.contracts
 import dev.restate.sdk.annotation.Handler
 import dev.restate.sdk.annotation.VirtualObject
 import dev.restate.sdk.kotlin.ObjectContext
+import jdk.jfr.Name
 import kotlinx.serialization.Serializable
 
-@Serializable data class Entry(val key: String, val value: String)
-
-@VirtualObject(name = "MapObject")
+@VirtualObject
+@Name("MapObject")
 interface MapObject {
+  @Serializable data class Entry(val key: String, val value: String)
+
   /**
    * Set value in map.
    *
