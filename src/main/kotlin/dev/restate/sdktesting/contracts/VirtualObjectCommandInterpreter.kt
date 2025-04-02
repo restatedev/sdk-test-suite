@@ -13,10 +13,12 @@ import dev.restate.sdk.annotation.Shared
 import dev.restate.sdk.annotation.VirtualObject
 import dev.restate.sdk.kotlin.ObjectContext
 import dev.restate.sdk.kotlin.SharedObjectContext
+import jdk.jfr.Name
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-@VirtualObject(name = "VirtualObjectCommandInterpreter")
+@VirtualObject
+@Name("VirtualObjectCommandInterpreter")
 interface VirtualObjectCommandInterpreter {
 
   @Serializable sealed interface AwaitableCommand

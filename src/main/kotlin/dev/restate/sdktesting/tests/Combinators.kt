@@ -40,7 +40,7 @@ class Combinators {
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
       withServiceSpec(
           ServiceSpec.defaultBuilder()
-              .withServices(VirtualObjectCommandInterpreterMetadata.SERVICE_NAME))
+              .withServices(VirtualObjectCommandInterpreterHandlers.Metadata.SERVICE_NAME))
     }
   }
 

@@ -15,7 +15,6 @@ import dev.restate.sdktesting.infra.RestateDeployerExtension
 import dev.restate.sdktesting.infra.ServiceSpec
 import java.util.UUID
 import java.util.stream.Stream
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.extension.RegisterExtension
@@ -32,7 +31,8 @@ class CallOrdering {
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
       withServiceSpec(
           ServiceSpec.defaultBuilder()
-              .withServices(ProxyMetadata.SERVICE_NAME, ListObjectMetadata.SERVICE_NAME))
+              .withServices(
+                  ProxyHandlers.Metadata.SERVICE_NAME, ListObjectHandlers.Metadata.SERVICE_NAME))
     }
 
     @JvmStatic
@@ -62,7 +62,7 @@ class CallOrdering {
             ordering.mapIndexed { index, executeAsBackgroundCall ->
               val proxyRequest =
                   ProxyRequest(
-                      ListObjectMetadata.SERVICE_NAME,
+                      ListObjectHandlers.Metadata.SERVICE_NAME,
                       listName,
                       "append",
                       Json.encodeToString(index.toString()).encodeToByteArray())

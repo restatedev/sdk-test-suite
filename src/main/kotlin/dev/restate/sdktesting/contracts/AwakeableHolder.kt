@@ -11,10 +11,12 @@ package dev.restate.sdktesting.contracts
 import dev.restate.sdk.annotation.Exclusive
 import dev.restate.sdk.annotation.VirtualObject
 import dev.restate.sdk.kotlin.ObjectContext
+import jdk.jfr.Name
 
 // This is a generic utility service that can be used in various situations where
 // we need to synchronize the services with the test runner using an awakeable.
-@VirtualObject(name = "AwakeableHolder")
+@VirtualObject
+@Name("AwakeableHolder")
 interface AwakeableHolder {
   @Exclusive suspend fun hold(context: ObjectContext, id: String)
 

@@ -16,6 +16,7 @@ import dev.restate.client.SendResponse.SendStatus
 import dev.restate.client.kotlin.*
 import dev.restate.common.Target
 import dev.restate.sdktesting.contracts.*
+import dev.restate.sdktesting.contracts.Counter.CounterUpdateResponse
 import dev.restate.sdktesting.infra.*
 import java.net.URI
 import java.util.*
@@ -41,10 +42,10 @@ class Ingress {
       withServiceSpec(
           ServiceSpec.defaultBuilder()
               .withServices(
-                  CounterMetadata.SERVICE_NAME,
-                  ProxyMetadata.SERVICE_NAME,
-                  TestUtilsServiceMetadata.SERVICE_NAME,
-                  VirtualObjectCommandInterpreterMetadata.SERVICE_NAME))
+                  CounterHandlers.Metadata.SERVICE_NAME,
+                  ProxyHandlers.Metadata.SERVICE_NAME,
+                  TestUtilsServiceHandlers.Metadata.SERVICE_NAME,
+                  VirtualObjectCommandInterpreterHandlers.Metadata.SERVICE_NAME))
       // We need the short cleanup interval b/c of the tests with the idempotent invoke.
       withEnv("RESTATE_WORKER__CLEANUP_INTERVAL", "1s")
     }
@@ -61,7 +62,7 @@ class Ingress {
     // Let's update the idempotency retention time to 3 seconds, to make this test faster
     val adminServiceClient = ServiceApi(ApiClient().setHost(adminURI.host).setPort(adminURI.port))
     adminServiceClient.modifyService(
-        CounterMetadata.SERVICE_NAME, ModifyServiceRequest().idempotencyRetention("3s"))
+        CounterHandlers.Metadata.SERVICE_NAME, ModifyServiceRequest().idempotencyRetention("3s"))
 
     val counterRandomName = UUID.randomUUID().toString()
     val myIdempotencyId = UUID.randomUUID().toString()
@@ -112,7 +113,7 @@ class Ingress {
     // Send request twice
     proxyCounterClient.oneWayCall(
         ProxyRequest(
-            CounterMetadata.SERVICE_NAME,
+            CounterHandlers.Metadata.SERVICE_NAME,
             counterRandomName,
             "add",
             Json.encodeToString(2).encodeToByteArray())) {
@@ -120,7 +121,7 @@ class Ingress {
         }
     proxyCounterClient.oneWayCall(
         ProxyRequest(
-            CounterMetadata.SERVICE_NAME,
+            CounterHandlers.Metadata.SERVICE_NAME,
             counterRandomName,
             "add",
             Json.encodeToString(2).encodeToByteArray())) {
@@ -192,7 +193,8 @@ class Ingress {
             .invocationId()
     val invocationHandle =
         ingressClient.invocationHandle(
-            invocationId, VirtualObjectCommandInterpreterMetadata.Serde.INTERPRETCOMMANDS_OUTPUT)
+            invocationId,
+            VirtualObjectCommandInterpreterHandlers.Metadata.Serde.INTERPRETCOMMANDS_OUTPUT)
 
     // Attach to request
     val blockedFut = invocationHandle.attachAsync()
@@ -241,11 +243,11 @@ class Ingress {
     val invocationHandle =
         ingressClient.idempotentInvocationHandle(
             Target.virtualObject(
-                VirtualObjectCommandInterpreterMetadata.SERVICE_NAME,
+                VirtualObjectCommandInterpreterHandlers.Metadata.SERVICE_NAME,
                 interpreterId,
                 "interpretCommands"),
             myIdempotencyId,
-            VirtualObjectCommandInterpreterMetadata.Serde.INTERPRETCOMMANDS_OUTPUT)
+            VirtualObjectCommandInterpreterHandlers.Metadata.Serde.INTERPRETCOMMANDS_OUTPUT)
 
     // Attach to request
     val blockedFut = invocationHandle.attachAsync()

@@ -9,8 +9,7 @@
 package dev.restate.sdktesting.tests
 
 import dev.restate.client.Client
-import dev.restate.sdktesting.contracts.TestUtilsServiceClient
-import dev.restate.sdktesting.contracts.TestUtilsServiceMetadata
+import dev.restate.sdktesting.contracts.*
 import dev.restate.sdktesting.infra.InjectClient
 import dev.restate.sdktesting.infra.RestateDeployerExtension
 import dev.restate.sdktesting.infra.ServiceSpec
@@ -39,7 +38,7 @@ class Sleep {
     @RegisterExtension
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
       withServiceSpec(
-          ServiceSpec.defaultBuilder().withServices(TestUtilsServiceMetadata.SERVICE_NAME))
+          ServiceSpec.defaultBuilder().withServices(TestUtilsServiceHandlers.Metadata.SERVICE_NAME))
     }
   }
 

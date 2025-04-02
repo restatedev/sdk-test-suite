@@ -11,8 +11,10 @@ package dev.restate.sdktesting.contracts
 import dev.restate.sdk.annotation.Handler
 import dev.restate.sdk.annotation.VirtualObject
 import dev.restate.sdk.kotlin.ObjectContext
+import jdk.jfr.Name
 
-@VirtualObject(name = "Failing")
+@VirtualObject
+@Name("Failing")
 interface Failing {
   @Handler suspend fun terminallyFailingCall(context: ObjectContext, errorMessage: String)
 

@@ -12,10 +12,7 @@ import dev.restate.admin.api.SubscriptionApi
 import dev.restate.admin.client.ApiClient
 import dev.restate.admin.model.CreateSubscriptionRequest
 import dev.restate.client.Client
-import dev.restate.sdktesting.contracts.CounterClient
-import dev.restate.sdktesting.contracts.CounterMetadata
-import dev.restate.sdktesting.contracts.ProxyMetadata
-import dev.restate.sdktesting.contracts.ProxyRequest
+import dev.restate.sdktesting.contracts.*
 import dev.restate.sdktesting.infra.*
 import dev.restate.sdktesting.infra.runtimeconfig.IngressOptions
 import dev.restate.sdktesting.infra.runtimeconfig.KafkaClusterOptions
@@ -55,7 +52,8 @@ class KafkaIngress {
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
       withServiceSpec(
           ServiceSpec.defaultBuilder()
-              .withServices(ProxyMetadata.SERVICE_NAME, CounterMetadata.SERVICE_NAME))
+              .withServices(
+                  ProxyHandlers.Metadata.SERVICE_NAME, CounterHandlers.Metadata.SERVICE_NAME))
       withContainer("kafka", KafkaContainer(COUNTER_TOPIC, EVENT_HANDLER_TOPIC))
       withConfig(kafkaClusterOptions())
     }
@@ -76,7 +74,7 @@ class KafkaIngress {
     subscriptionsClient.createSubscription(
         CreateSubscriptionRequest()
             .source("kafka://my-cluster/$COUNTER_TOPIC")
-            .sink("service://${CounterMetadata.SERVICE_NAME}/add")
+            .sink("service://${CounterHandlers.Metadata.SERVICE_NAME}/add")
             .options(mapOf("auto.offset.reset" to "earliest")))
 
     // Produce message to kafka
@@ -107,7 +105,7 @@ class KafkaIngress {
     subscriptionsClient.createSubscription(
         CreateSubscriptionRequest()
             .source("kafka://my-cluster/$EVENT_HANDLER_TOPIC")
-            .sink("service://${ProxyMetadata.SERVICE_NAME}/oneWayCall")
+            .sink("service://${ProxyHandlers.Metadata.SERVICE_NAME}/oneWayCall")
             .options(mapOf("auto.offset.reset" to "earliest")))
 
     // Produce message to kafka
@@ -118,21 +116,21 @@ class KafkaIngress {
             null to
                 Json.encodeToString(
                     ProxyRequest(
-                        CounterMetadata.SERVICE_NAME,
+                        CounterHandlers.Metadata.SERVICE_NAME,
                         counter,
                         "add",
                         Json.encodeToString(1).encodeToByteArray())),
             null to
                 Json.encodeToString(
                     ProxyRequest(
-                        CounterMetadata.SERVICE_NAME,
+                        CounterHandlers.Metadata.SERVICE_NAME,
                         counter,
                         "add",
                         Json.encodeToString(2).encodeToByteArray())),
             null to
                 Json.encodeToString(
                     ProxyRequest(
-                        CounterMetadata.SERVICE_NAME,
+                        CounterHandlers.Metadata.SERVICE_NAME,
                         counter,
                         "add",
                         Json.encodeToString(3).encodeToByteArray())),

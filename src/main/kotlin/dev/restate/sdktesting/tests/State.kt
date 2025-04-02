@@ -10,12 +10,12 @@ package dev.restate.sdktesting.tests
 
 import dev.restate.client.Client
 import dev.restate.sdktesting.contracts.*
+import dev.restate.sdktesting.contracts.MapObject.Entry
 import dev.restate.sdktesting.infra.InjectClient
 import dev.restate.sdktesting.infra.RestateDeployerExtension
 import dev.restate.sdktesting.infra.ServiceSpec
 import java.util.*
 import java.util.function.Function
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
@@ -35,9 +35,9 @@ class State {
       withServiceSpec(
           ServiceSpec.defaultBuilder()
               .withServices(
-                  CounterMetadata.SERVICE_NAME,
-                  ProxyMetadata.SERVICE_NAME,
-                  MapObjectMetadata.SERVICE_NAME))
+                  CounterHandlers.Metadata.SERVICE_NAME,
+                  ProxyHandlers.Metadata.SERVICE_NAME,
+                  MapObjectHandlers.Metadata.SERVICE_NAME))
     }
   }
 
@@ -65,7 +65,7 @@ class State {
     for (x in 0.rangeUntil(3)) {
       proxyClient.oneWayCall(
           ProxyRequest(
-              CounterMetadata.SERVICE_NAME,
+              CounterHandlers.Metadata.SERVICE_NAME,
               counterId,
               "add",
               Json.encodeToString(1).encodeToByteArray()),
