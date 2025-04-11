@@ -43,7 +43,6 @@ class KillInvocation {
         KillTestRunnerClient.fromClient(ingressClient, key)
             .send()
             .startCallTree(init = idempotentCallOptions)
-            .invocationHandle
             .invocationId()
     val awakeableHolderClient = AwakeableHolderClient.fromClient(ingressClient, key)
     // With this synchronization point we make sure the call tree has been built before killing it.

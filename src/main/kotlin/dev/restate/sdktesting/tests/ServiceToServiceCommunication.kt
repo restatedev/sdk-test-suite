@@ -9,7 +9,7 @@
 package dev.restate.sdktesting.tests
 
 import dev.restate.client.Client
-import dev.restate.client.kotlin.getOutputSuspend
+import dev.restate.client.kotlin.*
 import dev.restate.common.Target
 import dev.restate.sdktesting.contracts.*
 import dev.restate.sdktesting.contracts.Counter.CounterUpdateResponse

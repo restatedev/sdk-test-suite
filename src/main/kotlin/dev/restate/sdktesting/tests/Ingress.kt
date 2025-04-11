@@ -155,9 +155,9 @@ class Ingress {
     assertThat(secondInvocationSendStatus.status).isEqualTo(SendStatus.PREVIOUSLY_ACCEPTED)
 
     // IDs should be the same
-    assertThat(firstInvocationSendStatus.invocationHandle.invocationId())
+    assertThat(firstInvocationSendStatus.invocationId())
         .startsWith("inv")
-        .isEqualTo(secondInvocationSendStatus.invocationHandle.invocationId())
+        .isEqualTo(secondInvocationSendStatus.invocationId())
 
     // Wait for get
     await untilAsserted { assertThat(counterClient.get()).isEqualTo(2) }
@@ -189,7 +189,6 @@ class Ingress {
                 VirtualObjectCommandInterpreter.InterpretRequest.awaitAwakeable(awakeableKey)) {
                   idempotencyKey = myIdempotencyId
                 }
-            .invocationHandle
             .invocationId()
     val invocationHandle =
         ingressClient.invocationHandle(
