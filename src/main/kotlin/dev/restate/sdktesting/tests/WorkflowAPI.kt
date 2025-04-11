@@ -10,7 +10,7 @@ package dev.restate.sdktesting.tests
 
 import dev.restate.client.Client
 import dev.restate.client.SendResponse.SendStatus
-import dev.restate.client.kotlin.getOutputSuspend
+import dev.restate.client.kotlin.*
 import dev.restate.sdktesting.contracts.*
 import dev.restate.sdktesting.infra.*
 import java.util.*
@@ -58,8 +58,7 @@ class WorkflowAPI {
     // Re-submit should have no effect
     val secondSendResponse = client.submit("Francesco")
     assertThat(secondSendResponse.status).isEqualTo(SendStatus.PREVIOUSLY_ACCEPTED)
-    assertThat(secondSendResponse.invocationHandle.invocationId())
-        .isEqualTo(sendResponse.invocationHandle.invocationId())
+    assertThat(secondSendResponse.invocationId()).isEqualTo(sendResponse.invocationId())
     assertThat(client.workflowHandle().getOutputSuspend().response.value).isEqualTo("Till")
   }
 }

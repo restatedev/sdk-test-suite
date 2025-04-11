@@ -58,7 +58,6 @@ class Cancellation {
         cancelTestClient
             .send()
             .startTest(blockingOperation, init = idempotentCallOptions)
-            .invocationHandle()
             .invocationId()
 
     val awakeableHolderClient = AwakeableHolderClient.fromClient(ingressClient, key)

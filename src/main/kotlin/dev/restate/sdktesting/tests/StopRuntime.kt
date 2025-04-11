@@ -8,11 +8,9 @@
 // https://github.com/restatedev/sdk-test-suite/blob/main/LICENSE
 package dev.restate.sdktesting.tests
 
-import dev.restate.client.ClientRequestOptions
 import dev.restate.client.jdk.JdkClient
 import dev.restate.sdktesting.contracts.*
 import dev.restate.sdktesting.infra.*
-import dev.restate.serde.SerdeFactory
 import java.net.http.HttpClient
 import java.time.Duration
 import java.time.temporal.ChronoUnit
@@ -51,10 +49,7 @@ class StopRuntime {
     var httpClient = HttpClient.newHttpClient()
     var ingressClient =
         JdkClient.of(
-            httpClient,
-            "http://127.0.0.1:${runtimeHandle.getMappedPort(8080)!!}",
-            SerdeFactory.NOOP,
-            ClientRequestOptions.DEFAULT)
+            httpClient, "http://127.0.0.1:${runtimeHandle.getMappedPort(8080)!!}", null, null)
     val res1 = CounterClient.fromClient(ingressClient, "my-key").add(1, idempotentCallOptions)
     assertThat(res1.oldValue).isEqualTo(0)
     assertThat(res1.newValue).isEqualTo(1)
@@ -75,10 +70,7 @@ class StopRuntime {
               HttpClient.newBuilder().connectTimeout(5.seconds.toJavaDuration()).build()
           val ingressClient =
               JdkClient.of(
-                  httpClient,
-                  "http://127.0.0.1:${runtimeHandle.getMappedPort(8080)!!}",
-                  SerdeFactory.NOOP,
-                  ClientRequestOptions.DEFAULT)
+                  httpClient, "http://127.0.0.1:${runtimeHandle.getMappedPort(8080)!!}", null, null)
           val res2 =
               withTimeout(5.seconds) {
                 CounterClient.fromClient(ingressClient, "my-key").add(2, idempotentCallOptions)
