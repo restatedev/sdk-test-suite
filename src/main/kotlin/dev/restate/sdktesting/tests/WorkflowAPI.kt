@@ -43,7 +43,7 @@ class WorkflowAPI {
     val client = BlockAndWaitWorkflowClient.fromClient(ingressClient, UUID.randomUUID().toString())
 
     val sendResponse = client.submit("Francesco")
-    assertThat(sendResponse.status).isEqualTo(SendStatus.ACCEPTED)
+    assertThat(sendResponse.sendStatus()).isEqualTo(SendStatus.ACCEPTED)
 
     // Wait state is set
     await withAlias "state is not blank" untilAsserted { assertThat(client.getState()).isNotBlank }
@@ -57,7 +57,7 @@ class WorkflowAPI {
 
     // Re-submit should have no effect
     val secondSendResponse = client.submit("Francesco")
-    assertThat(secondSendResponse.status).isEqualTo(SendStatus.PREVIOUSLY_ACCEPTED)
+    assertThat(secondSendResponse.sendStatus()).isEqualTo(SendStatus.PREVIOUSLY_ACCEPTED)
     assertThat(secondSendResponse.invocationId()).isEqualTo(sendResponse.invocationId())
     assertThat(client.workflowHandle().getOutputSuspend().response.value).isEqualTo("Till")
   }
