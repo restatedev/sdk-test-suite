@@ -26,9 +26,11 @@ import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Timeout
 import org.junit.jupiter.api.extension.RegisterExtension
+import org.junit.jupiter.api.parallel.Isolated
 
 @Tag("always-suspending")
 @Tag("only-single-node")
+@Isolated("Starting and stopping the runtime occupies docker resources")
 class KillRuntime {
 
   companion object {
