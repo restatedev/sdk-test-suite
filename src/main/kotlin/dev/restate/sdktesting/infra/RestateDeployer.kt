@@ -131,6 +131,7 @@ private constructor(
               "restate_log_server" to "trace",
               "restate_bifrost" to "trace",
               "restate_core::partitions" to "trace",
+              "restate_admin::cluster_controller" to "trace",
               "restate" to "debug")
       val defaultLog =
           (listOf("info") + defaultLogFilters.map { "${it.key}=${it.value}" }).joinToString(
