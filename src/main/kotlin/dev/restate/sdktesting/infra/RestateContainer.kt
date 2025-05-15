@@ -85,6 +85,7 @@ class RestateContainer(
                   "RESTATE_METADATA_SERVER__TYPE" to "replicated",
                   "RESTATE_METADATA_CLIENT__ADDRESSES" to
                       "[http://$RESTATE_RUNTIME:$RUNTIME_NODE_PORT]",
+                  "RESTATE_BIFROST__AUTO_RECOVERY_INTERVAL" to "2s",
               )
 
       return listOf(
