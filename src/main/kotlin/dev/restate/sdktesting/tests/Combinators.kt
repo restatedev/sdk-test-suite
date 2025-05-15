@@ -115,14 +115,17 @@ class Combinators {
         {
           assertThat(interpreterClient.hasAwakeable(awk2)).isTrue()
         }
-    assertThat(interpreterClient.hasAwakeable(awk0)).isTrue()
-    assertThat(interpreterClient.hasAwakeable(awk1)).isTrue()
+
+    // hasAwakeable might have to be retried in case of leadership changes
+    assertThat(interpreterClient.hasAwakeable(awk0, idempotentCallOptions)).isTrue()
+    // hasAwakeable might have to be retried in case of leadership changes
+    assertThat(interpreterClient.hasAwakeable(awk1, idempotentCallOptions)).isTrue()
 
     // Now let's reject awakeable 2, this should not complete anything
-    interpreterClient.rejectAwakeable(RejectAwakeable(awk2, "fail"))
+    interpreterClient.rejectAwakeable(RejectAwakeable(awk2, "fail"), idempotentCallOptions)
 
     // Resolve awakeable 1, this will complete successfully
-    interpreterClient.resolveAwakeable(ResolveAwakeable(awk1, "awk1-result"))
+    interpreterClient.resolveAwakeable(ResolveAwakeable(awk1, "awk1-result"), idempotentCallOptions)
 
     assertThat(result.await()).isEqualTo("awk1-result")
   }
