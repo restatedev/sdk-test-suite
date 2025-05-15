@@ -122,7 +122,7 @@ class Cancellation {
     // made, so we need to retry.
     await.ignoreException(TimeoutCancellationException::class.java).until {
       runBlocking {
-        testUtilsClient.cancelInvocation(id)
+        testUtilsClient.cancelInvocation(id, idempotentCallOptions)
         withTimeout(1.seconds) { cancelTestClient.verifyTest() }
       }
     }
