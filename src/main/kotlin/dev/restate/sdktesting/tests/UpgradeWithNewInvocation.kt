@@ -10,6 +10,7 @@ package dev.restate.sdktesting.tests
 
 import dev.restate.admin.api.DeploymentApi
 import dev.restate.admin.client.ApiClient
+import dev.restate.admin.client.ApiException
 import dev.restate.admin.model.RegisterDeploymentRequest
 import dev.restate.admin.model.RegisterDeploymentRequestAnyOf
 import dev.restate.client.Client
@@ -18,12 +19,16 @@ import dev.restate.sdktesting.contracts.VirtualObjectCommandInterpreter.Interpre
 import dev.restate.sdktesting.infra.*
 import java.net.URI
 import java.util.UUID
+import java.util.concurrent.TimeUnit
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
 import org.awaitility.kotlin.withAlias
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.RegisterExtension
+import org.rnorth.ducttape.unreliables.Unreliables
+
+private const val RETRY_SLEEP_DURATION_MS = 30L
 
 @Tag("always-suspending")
 class UpgradeWithNewInvocation {
@@ -44,11 +49,22 @@ class UpgradeWithNewInvocation {
               .withEnv(UPGRADE_TEST_ENV, "v2"))
     }
 
-    fun registerService2(metaURL: URI) {
+    fun registerServiceEndpoint(metaURL: URI, serviceEndpoint: String) {
       val client = DeploymentApi(ApiClient().setHost(metaURL.host).setPort(metaURL.port))
-      client.createDeployment(
+      val request =
           RegisterDeploymentRequest(
-              RegisterDeploymentRequestAnyOf().uri("http://version2:9080/").force(false)))
+              RegisterDeploymentRequestAnyOf().uri(serviceEndpoint).force(false))
+
+      Unreliables.retryUntilSuccess(20, TimeUnit.SECONDS) {
+        try {
+          return@retryUntilSuccess client.createDeployment(request)
+        } catch (e: ApiException) {
+          Thread.sleep(RETRY_SLEEP_DURATION_MS)
+          throw IllegalStateException(
+              "Error when discovering endpoint $serviceEndpoint, got status code ${e.code} with body: ${e.responseBody}",
+              e)
+        }
+      }
     }
   }
 
@@ -68,7 +84,7 @@ class UpgradeWithNewInvocation {
     assertThat(firstResult).isEqualTo("v1")
 
     // Now register the update
-    registerService2(adminURI)
+    registerServiceEndpoint(adminURI, "http://version2:9080/")
 
     // After the update, the runtime might not immediately propagate the usage of the new version
     // (this effectively depends on implementation details).

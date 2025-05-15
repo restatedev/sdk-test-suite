@@ -83,7 +83,7 @@ class UpgradeWithInFlightInvocation {
             }
 
         // Now register the update
-        registerService2(adminURI)
+        UpgradeWithNewInvocation.registerServiceEndpoint(adminURI, "http://version2:9080/")
 
         // Now let's resume the awakeable
         interpreter.resolveAwakeable(
