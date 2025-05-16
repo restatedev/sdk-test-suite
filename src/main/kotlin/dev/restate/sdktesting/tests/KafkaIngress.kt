@@ -23,6 +23,7 @@ import kotlinx.serialization.json.Json
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.Producer
 import org.apache.kafka.clients.producer.ProducerRecord
+import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
 import org.awaitility.kotlin.withAlias
@@ -48,6 +49,8 @@ private fun kafkaClusterOptions(): RestateConfigSchema {
 class KafkaIngress {
 
   companion object {
+    val LOG = LogManager.getLogger(KafkaIngress::class.java)
+
     @RegisterExtension
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
       withServiceSpec(
@@ -156,7 +159,9 @@ private fun produceMessageToKafka(
 
   val producer: Producer<String, String> = KafkaProducer(props)
   for (value in values) {
-    producer.send(ProducerRecord(topic, value.first, value.second))
+    val metadata = producer.send(ProducerRecord(topic, value.first, value.second)).get()
+    KafkaIngress.LOG.info(
+        "Produced record with key ${value.first ?: "null"} to topic ${metadata.topic()} at offset ${metadata.offset()}")
   }
   producer.close()
 }
