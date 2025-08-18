@@ -20,9 +20,16 @@ group = "dev.restate.sdktesting"
 version = "1.0-SNAPSHOT"
 
 repositories {
+  // Snapshots repo
+  //  maven {
+  //    name = "Central Portal Snapshots"
+  //    url = uri("https://central.sonatype.com/repository/maven-snapshots/")
+  //  }
+
+  // Maven local for local testing
+  //  mavenLocal()
+
   mavenCentral()
-  // OSSRH Snapshots repo
-  //  maven { url = uri("https://s01.oss.sonatype.org/content/repositories/snapshots/") }
 }
 
 dependencies {

@@ -3,11 +3,6 @@ plugins { id("org.gradle.toolchains.foojay-resolver-convention") version "0.8.0"
 rootProject.name = "restate-sdk-test-suite"
 
 dependencyResolutionManagement {
-  repositories {
-    mavenCentral()
-    //    maven { url = uri("https://s01.oss.sonatype.org/content/repositories/snapshots/") }
-  }
-
   versionCatalogs {
     create("libs") {
       library("restate-sdk-client", "dev.restate", "client").versionRef("restate")
