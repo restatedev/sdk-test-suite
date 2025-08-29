@@ -81,7 +81,7 @@ class RestateContainer(
                   "RESTATE_BIFROST__DEFAULT_PROVIDER" to "replicated",
                   "RESTATE_BIFROST__REPLICATED_LOGLET__DEFAULT_LOG_REPLICATION" to
                       replicationProperty.toString(),
-                  "RESTATE_ROLES" to "[worker,log-server,admin,metadata-server]",
+                  "RESTATE_ROLES" to "[worker,http-ingress,log-server,admin,metadata-server]",
                   "RESTATE_METADATA_SERVER__TYPE" to "replicated",
                   "RESTATE_METADATA_CLIENT__ADDRESSES" to
                       "[http://$RESTATE_RUNTIME:$RUNTIME_NODE_PORT]",
