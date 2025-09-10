@@ -44,6 +44,18 @@ class RunRetry {
         .isGreaterThanOrEqualTo(attempts)
   }
 
+  @DisplayName("Run is executed only once")
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  fun executedOnlyOnce(@InjectClient ingressClient: Client) = runTest {
+    val attempts = 1
+
+    assertThat(
+            FailingClient.fromClient(ingressClient, UUID.randomUUID().toString())
+                .sideEffectFailsAfterGivenAttempts(attempts, idempotentCallOptions))
+        .isGreaterThanOrEqualTo(attempts)
+  }
+
   @DisplayName("Run is retried until it exhausts the retry attempts")
   @Test
   @Execution(ExecutionMode.CONCURRENT)
