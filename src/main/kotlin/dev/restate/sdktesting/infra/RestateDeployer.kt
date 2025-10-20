@@ -74,7 +74,6 @@ private constructor(
       private var serviceEndpoints: MutableList<ServiceSpec> = mutableListOf(),
       private var additionalContainers: MutableMap<String, GenericContainer<*>> = mutableMapOf(),
       private var runtimeContainerEnvs: MutableMap<String, String> = mutableMapOf(),
-      private var invokerRetryPolicy: RetryPolicy? = null,
       private var configSchema: RestateConfigSchema? = null,
       private var copyToContainer: MutableList<Pair<String, Transferable>> = mutableListOf()
   ) {
@@ -109,8 +108,6 @@ private constructor(
     fun withEnv(key: String, value: String) = apply { this.runtimeContainerEnvs[key] = value }
 
     fun withEnv(map: Map<String, String>) = apply { this.runtimeContainerEnvs.putAll(map) }
-
-    fun withInvokerRetryPolicy(policy: RetryPolicy) = apply { this.invokerRetryPolicy = policy }
 
     fun withConfig(configSchema: RestateConfigSchema) = apply { this.configSchema = configSchema }
 
@@ -155,8 +152,7 @@ private constructor(
           additionalContainers,
           loadedRuntimeContainerEnvs +
               this.runtimeContainerEnvs +
-              getGlobalConfig().additionalRuntimeEnvs +
-              (invokerRetryPolicy?.toInvokerSetupEnv() ?: emptyMap()),
+              getGlobalConfig().additionalRuntimeEnvs,
           copyToContainer,
           configSchema)
     }

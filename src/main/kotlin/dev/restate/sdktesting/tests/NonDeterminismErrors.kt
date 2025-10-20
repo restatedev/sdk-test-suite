@@ -31,7 +31,9 @@ class NonDeterminismErrors {
   companion object {
     @RegisterExtension
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
-      withInvokerRetryPolicy(RetryPolicy.None)
+      withEnv("RESTATE_DEFAULT_RETRY_POLICY__MAX_ATTEMPTS", "1")
+      withEnv("RESTATE_DEFAULT_RETRY_POLICY__ON_MAX_ATTEMPTS", "kill")
+      withEnv("RESTATE_DEFAULT_RETRY_POLICY__INITIAL_INTERVAL", "1ms")
       withServiceSpec(
           ServiceSpec.defaultBuilder()
               .withServices(
