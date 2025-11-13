@@ -13,7 +13,7 @@ import dev.restate.admin.api.DeploymentApi
 import dev.restate.admin.client.ApiClient
 import dev.restate.admin.client.ApiException
 import dev.restate.admin.model.RegisterDeploymentRequest
-import dev.restate.admin.model.RegisterDeploymentRequestAnyOf
+import dev.restate.admin.model.RegisterHttpDeploymentRequest
 import dev.restate.sdktesting.infra.runtimeconfig.IngressOptions
 import dev.restate.sdktesting.infra.runtimeconfig.RestateConfigSchema
 import java.io.File
@@ -334,7 +334,7 @@ private constructor(
       return
     }
     val request =
-        RegisterDeploymentRequest(RegisterDeploymentRequestAnyOf().uri(uri.toString()).force(false))
+        RegisterDeploymentRequest(RegisterHttpDeploymentRequest().uri(uri.toString()).force(false))
 
     val response =
         Unreliables.retryUntilSuccess(20, TimeUnit.SECONDS) {

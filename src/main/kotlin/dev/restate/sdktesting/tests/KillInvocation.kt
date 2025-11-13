@@ -10,7 +10,6 @@ package dev.restate.sdktesting.tests
 
 import dev.restate.admin.api.InvocationApi
 import dev.restate.admin.client.ApiClient
-import dev.restate.admin.model.DeletionMode
 import dev.restate.client.Client
 import dev.restate.sdktesting.contracts.*
 import dev.restate.sdktesting.infra.*
@@ -58,7 +57,7 @@ class KillInvocation {
 
     // The termination signal might arrive before the blocking call to the cancel singleton was
     // made, so we need to retry.
-    await withAlias "verify test" untilAsserted { client.deleteInvocation(id, DeletionMode.KILL) }
+    await withAlias "verify test" untilAsserted { client.killInvocation(id) }
 
     await withAlias
         "singleton service is unlocked after killing the call tree" untilAsserted
