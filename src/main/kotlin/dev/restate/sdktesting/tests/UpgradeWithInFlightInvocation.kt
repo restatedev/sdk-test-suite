@@ -11,7 +11,7 @@ package dev.restate.sdktesting.tests
 import dev.restate.admin.api.DeploymentApi
 import dev.restate.admin.client.ApiClient
 import dev.restate.admin.model.RegisterDeploymentRequest
-import dev.restate.admin.model.RegisterDeploymentRequestAnyOf
+import dev.restate.admin.model.RegisterHttpDeploymentRequest
 import dev.restate.client.Client
 import dev.restate.sdktesting.contracts.*
 import dev.restate.sdktesting.contracts.VirtualObjectCommandInterpreter.AwaitOne
@@ -52,7 +52,7 @@ class UpgradeWithInFlightInvocation {
       val client = DeploymentApi(ApiClient().setHost(metaURL.host).setPort(metaURL.port))
       client.createDeployment(
           RegisterDeploymentRequest(
-              RegisterDeploymentRequestAnyOf().uri("http://version2:9080/").force(false)))
+              RegisterHttpDeploymentRequest().uri("http://version2:9080/").force(false)))
     }
   }
 

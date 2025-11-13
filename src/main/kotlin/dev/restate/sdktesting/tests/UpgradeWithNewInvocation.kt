@@ -12,7 +12,7 @@ import dev.restate.admin.api.DeploymentApi
 import dev.restate.admin.client.ApiClient
 import dev.restate.admin.client.ApiException
 import dev.restate.admin.model.RegisterDeploymentRequest
-import dev.restate.admin.model.RegisterDeploymentRequestAnyOf
+import dev.restate.admin.model.RegisterHttpDeploymentRequest
 import dev.restate.client.Client
 import dev.restate.sdktesting.contracts.*
 import dev.restate.sdktesting.contracts.VirtualObjectCommandInterpreter.InterpretRequest
@@ -53,7 +53,7 @@ class UpgradeWithNewInvocation {
       val client = DeploymentApi(ApiClient().setHost(metaURL.host).setPort(metaURL.port))
       val request =
           RegisterDeploymentRequest(
-              RegisterDeploymentRequestAnyOf().uri(serviceEndpoint).force(false))
+              RegisterHttpDeploymentRequest().uri(serviceEndpoint).force(false))
 
       Unreliables.retryUntilSuccess(20, TimeUnit.SECONDS) {
         try {
