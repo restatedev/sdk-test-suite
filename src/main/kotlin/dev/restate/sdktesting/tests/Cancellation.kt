@@ -10,6 +10,7 @@ package dev.restate.sdktesting.tests
 
 import dev.restate.admin.api.InvocationApi
 import dev.restate.admin.client.ApiClient
+import dev.restate.admin.client.ApiException
 import dev.restate.client.Client
 import dev.restate.sdktesting.contracts.*
 import dev.restate.sdktesting.infra.*
@@ -74,7 +75,14 @@ class Cancellation {
     await withAlias
         "verify test" untilAsserted
         {
-          client.cancelInvocation(id)
+          try {
+            client.cancelInvocation(id)
+          } catch (e: ApiException) {
+            if (!(e.code == 409 || e.code == 404)) {
+              throw e
+            }
+            // Already completed/cancelled
+          }
           withTimeout(1.seconds) { cancelTestClient.verifyTest() }
         }
 
@@ -119,12 +127,15 @@ class Cancellation {
 
     // The termination signal might arrive before the blocking call to the cancel singleton was
     // made, so we need to retry.
-    await.ignoreException(TimeoutCancellationException::class.java).until {
-      runBlocking {
-        testUtilsClient.cancelInvocation(id, idempotentCallOptions)
-        withTimeout(1.seconds) { cancelTestClient.verifyTest(idempotentCallOptions) }
-      }
-    }
+    await
+        .ignoreExceptionsInstanceOf(TimeoutCancellationException::class.java)
+        .ignoreExceptionsInstanceOf(ApiException::class.java)
+        .until {
+          runBlocking {
+            testUtilsClient.cancelInvocation(id, idempotentCallOptions)
+            withTimeout(1.seconds) { cancelTestClient.verifyTest(idempotentCallOptions) }
+          }
+        }
 
     // Check that the singleton service is unlocked
     await withAlias
