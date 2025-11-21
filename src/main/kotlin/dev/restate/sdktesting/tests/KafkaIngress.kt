@@ -31,6 +31,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.RegisterExtension
 import org.junit.jupiter.api.parallel.Execution
 import org.junit.jupiter.api.parallel.ExecutionMode
+import org.junit.jupiter.api.parallel.Isolated
 
 private const val COUNTER_TOPIC = "counter"
 private const val EVENT_HANDLER_TOPIC = "event-handler"
@@ -46,6 +47,7 @@ private fun kafkaClusterOptions(): RestateConfigSchema {
                           .withBrokers(listOf("PLAINTEXT://kafka:9092")))))
 }
 
+@Isolated
 class KafkaIngress {
 
   companion object {
