@@ -127,14 +127,11 @@ class Cancellation {
 
     // The termination signal might arrive before the blocking call to the cancel singleton was
     // made, so we need to retry.
-    await
-        .ignoreExceptionsInstanceOf(TimeoutCancellationException::class.java)
-        .ignoreExceptionsInstanceOf(ApiException::class.java)
-        .until {
-          runBlocking {
-            testUtilsClient.cancelInvocation(id, idempotentCallOptions)
-            withTimeout(1.seconds) { cancelTestClient.verifyTest(idempotentCallOptions) }
-          }
+    await withAlias
+        "verify test" untilAsserted
+        {
+          testUtilsClient.cancelInvocation(id, idempotentCallOptions)
+          withTimeout(1.seconds) { cancelTestClient.verifyTest(idempotentCallOptions) }
         }
 
     // Check that the singleton service is unlocked
