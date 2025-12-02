@@ -14,6 +14,7 @@ import dev.restate.sdktesting.infra.*
 import java.net.http.HttpClient
 import java.time.Duration
 import java.time.temporal.ChronoUnit
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
@@ -60,6 +61,8 @@ class StopRuntime {
     // Stop and start the runtime
     runtimeHandle.terminateAndRestart()
 
+    val idempotencyKey = UUID.randomUUID().toString()
+
     await withAlias
         "second add" atMost
         Duration.of(60, ChronoUnit.SECONDS) untilAsserted
@@ -73,7 +76,9 @@ class StopRuntime {
                   httpClient, "http://127.0.0.1:${runtimeHandle.getMappedPort(8080)!!}", null, null)
           val res2 =
               withTimeout(5.seconds) {
-                CounterClient.fromClient(ingressClient, "my-key").add(2, idempotentCallOptions)
+                CounterClient.fromClient(ingressClient, "my-key").add(2) {
+                  this.idempotencyKey = idempotencyKey
+                }
               }
           assertThat(res2.oldValue).isEqualTo(1)
           assertThat(res2.newValue).isEqualTo(3)
