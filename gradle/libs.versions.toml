@@ -1,5 +1,5 @@
 [versions]
-restate = "2.0.0"
+restate = "2.4.2"
 ktor = "2.3.9"
 
 [libraries]
