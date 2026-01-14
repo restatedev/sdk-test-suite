@@ -44,7 +44,8 @@ private fun kafkaClusterOptions(): RestateConfigSchema {
                   listOf(
                       KafkaClusterOptions()
                           .withName("my-cluster")
-                          .withBrokers(listOf("PLAINTEXT://kafka:9092")))))
+                          .withBrokers(
+                              listOf("PLAINTEXT://kafka:${KafkaContainer.KAFKA_NETWORK_PORT}")))))
 }
 
 @Isolated
@@ -59,7 +60,7 @@ class KafkaIngress {
           ServiceSpec.defaultBuilder()
               .withServices(
                   ProxyHandlers.Metadata.SERVICE_NAME, CounterHandlers.Metadata.SERVICE_NAME))
-      withContainer("kafka", KafkaContainer(COUNTER_TOPIC, EVENT_HANDLER_TOPIC))
+      withContainer("kafka", KafkaContainer())
       withConfig(kafkaClusterOptions())
     }
   }
@@ -68,7 +69,8 @@ class KafkaIngress {
   @Execution(ExecutionMode.CONCURRENT)
   fun handleEventInCounterService(
       @InjectAdminURI adminURI: URI,
-      @InjectContainerPort(hostName = "kafka", port = KafkaContainer.EXTERNAL_PORT) kafkaPort: Int,
+      @InjectContainerPort(hostName = "kafka", port = KafkaContainer.KAFKA_EXTERNAL_PORT)
+      kafkaPort: Int,
       @InjectClient ingressClient: Client
   ) = runTest {
     val counter = UUID.randomUUID().toString()
@@ -99,7 +101,8 @@ class KafkaIngress {
   @Execution(ExecutionMode.CONCURRENT)
   fun handleEventInEventHandler(
       @InjectAdminURI adminURI: URI,
-      @InjectContainerPort(hostName = "kafka", port = KafkaContainer.EXTERNAL_PORT) kafkaPort: Int,
+      @InjectContainerPort(hostName = "kafka", port = KafkaContainer.KAFKA_EXTERNAL_PORT)
+      kafkaPort: Int,
       @InjectClient ingressClient: Client
   ) = runTest {
     val counter = UUID.randomUUID().toString()
