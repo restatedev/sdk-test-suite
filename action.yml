@@ -49,7 +49,7 @@ runs:
     # Pre-emptively pull the Kafka docker image, because it's slow and impedes the test execution
     - name: Pull Kafka docker image
       shell: bash
-      run: docker pull confluentinc/cp-kafka:7.1.0-1-ubi8
+      run: docker pull docker.io/apache/kafka-native:4.1.1
 
     - name: Run test suite
       env:
