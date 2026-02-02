@@ -10,7 +10,7 @@ package dev.restate.sdktesting.tests
 
 import dev.restate.client.Client
 import dev.restate.client.kotlin.*
-import dev.restate.sdktesting.contracts.*
+import dev.restate.sdktesting.contracts.TestUtilsService
 import dev.restate.sdktesting.infra.*
 import java.util.*
 import java.util.concurrent.TimeUnit
@@ -28,8 +28,7 @@ class Ingress {
   companion object {
     @RegisterExtension
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
-      withServiceSpec(
-          ServiceSpec.defaultBuilder().withServices(TestUtilsServiceHandlers.Metadata.SERVICE_NAME))
+      withServiceSpec(ServiceSpec.defaultBuilder().withServices(TestUtilsService::class))
       // We need the short cleanup interval b/c of the tests with the idempotent invoke.
       withEnv("RESTATE_WORKER__CLEANUP_INTERVAL", "1s")
     }
@@ -43,10 +42,15 @@ class Ingress {
     val headerValue = "x-my-custom-value"
 
     assertThat(
-            TestUtilsServiceClient.fromClient(ingressClient).echoHeaders {
-              idempotencyKey = UUID.randomUUID().toString()
-              headers = mapOf(headerName to headerValue)
-            })
+            ingressClient
+                .toService<TestUtilsService>()
+                .request { echoHeaders() }
+                .options {
+                  idempotencyKey = UUID.randomUUID().toString()
+                  headers = mapOf(headerName to headerValue)
+                }
+                .call()
+                .response)
         .containsEntry(headerName, headerValue)
   }
 
@@ -57,7 +61,12 @@ class Ingress {
     val bytes = Random.nextBytes(100)
 
     assertThat(
-            TestUtilsServiceClient.fromClient(ingressClient).rawEcho(bytes, idempotentCallOptions))
+            ingressClient
+                .toService<TestUtilsService>()
+                .request { rawEcho(bytes) }
+                .options(idempotentCallOptions)
+                .call()
+                .response)
         .isEqualTo(bytes)
   }
 }

@@ -12,12 +12,17 @@ import dev.restate.admin.api.InvocationApi
 import dev.restate.admin.client.ApiClient
 import dev.restate.admin.client.ApiException
 import dev.restate.client.Client
-import dev.restate.sdktesting.contracts.*
+import dev.restate.client.kotlin.*
+import dev.restate.common.reflections.ReflectionUtils.extractServiceName
+import dev.restate.sdktesting.contracts.AwakeableHolder
+import dev.restate.sdktesting.contracts.CancelTest
+import dev.restate.sdktesting.contracts.Proxy
+import dev.restate.sdktesting.contracts.TestUtilsService
 import dev.restate.sdktesting.infra.*
 import java.net.URI
 import java.util.*
 import kotlin.time.Duration.Companion.seconds
-import kotlinx.coroutines.*
+import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
@@ -35,38 +40,39 @@ class Cancellation {
       withServiceSpec(
           ServiceSpec.defaultBuilder()
               .withServices(
-                  CancelTestRunnerHandlers.Metadata.SERVICE_NAME,
-                  CancelTestBlockingServiceHandlers.Metadata.SERVICE_NAME,
-                  AwakeableHolderHandlers.Metadata.SERVICE_NAME,
-                  ProxyHandlers.Metadata.SERVICE_NAME,
-                  TestUtilsServiceHandlers.Metadata.SERVICE_NAME))
+                  CancelTest.Runner::class,
+                  CancelTest.BlockingService::class,
+                  AwakeableHolder::class,
+                  Proxy::class,
+                  TestUtilsService::class))
     }
   }
 
   @ParameterizedTest(name = "cancel blocked invocation on {0} from Admin API")
-  @EnumSource(value = BlockingOperation::class)
+  @EnumSource(value = CancelTest.BlockingOperation::class)
   fun cancelFromAdminAPI(
-      blockingOperation: BlockingOperation,
+      blockingOperation: CancelTest.BlockingOperation,
       @InjectClient ingressClient: Client,
       @InjectAdminURI adminURI: URI,
   ) = runTest {
     val key = UUID.randomUUID().toString()
-    val cancelTestClient = CancelTestRunnerClient.fromClient(ingressClient, key)
-    val blockingServiceClient = CancelTestBlockingServiceClient.fromClient(ingressClient, key)
+    val cancelTestClient = ingressClient.toVirtualObject<CancelTest.Runner>(key)
+    val blockingServiceClient = ingressClient.toVirtualObject<CancelTest.BlockingService>(key)
 
     val id =
         cancelTestClient
+            .request { startTest(blockingOperation) }
+            .options(idempotentCallOptions)
             .send()
-            .startTest(blockingOperation, init = idempotentCallOptions)
             .invocationId()
 
-    val awakeableHolderClient = AwakeableHolderClient.fromClient(ingressClient, key)
+    val awakeableHolderClient = ingressClient.toVirtualObject<AwakeableHolder>(key)
     await withAlias
         "awakeable is registered" untilAsserted
         {
-          assertThat(awakeableHolderClient.hasAwakeable()).isTrue()
+          assertThat(awakeableHolderClient.request { hasAwakeable() }.call().response).isTrue()
         }
-    awakeableHolderClient.unlock("cancel", idempotentCallOptions)
+    awakeableHolderClient.request { unlock("cancel") }.options(idempotentCallOptions).call()
 
     val client = InvocationApi(ApiClient().setHost(adminURI.host).setPort(adminURI.port))
 
@@ -83,62 +89,69 @@ class Cancellation {
             }
             // Already completed/cancelled
           }
-          withTimeout(1.seconds) { cancelTestClient.verifyTest() }
+          withTimeout(1.seconds) { cancelTestClient.request { verifyTest() }.call() }
         }
 
     // Check that the singleton service is unlocked
     await withAlias
         "blocking service is unlocked" untilAsserted
         {
-          blockingServiceClient.isUnlocked()
+          blockingServiceClient.request { isUnlocked() }.call()
         }
   }
 
   @ParameterizedTest(name = "cancel blocked invocation on {0} from Context")
-  @EnumSource(value = BlockingOperation::class)
+  @EnumSource(value = CancelTest.BlockingOperation::class)
   fun cancelFromContext(
-      blockingOperation: BlockingOperation,
+      blockingOperation: CancelTest.BlockingOperation,
       @InjectClient ingressClient: Client,
   ) = runTest {
     val key = UUID.randomUUID().toString()
-    val cancelTestClient = CancelTestRunnerClient.fromClient(ingressClient, key)
-    val blockingServiceClient = CancelTestBlockingServiceClient.fromClient(ingressClient, key)
-    val proxyClient = ProxyClient.fromClient(ingressClient)
-    val testUtilsClient = TestUtilsServiceClient.fromClient(ingressClient)
+    val cancelTestClient = ingressClient.toVirtualObject<CancelTest.Runner>(key)
+    val blockingServiceClient = ingressClient.toVirtualObject<CancelTest.BlockingService>(key)
+    val proxyClient = ingressClient.toService<Proxy>()
+    val testUtilsClient = ingressClient.toService<TestUtilsService>()
 
     val id =
-        proxyClient.oneWayCall(
-            ProxyRequest(
-                serviceName = CancelTestRunnerHandlers.Metadata.SERVICE_NAME,
-                virtualObjectKey = key,
-                handlerName = "startTest",
-                message = Json.encodeToString(blockingOperation).toByteArray()),
-            idempotentCallOptions)
+        proxyClient
+            .request {
+              oneWayCall(
+                  Proxy.ProxyRequest(
+                      serviceName = extractServiceName(CancelTest.Runner::class.java),
+                      virtualObjectKey = key,
+                      handlerName = "startTest",
+                      message = Json.encodeToString(blockingOperation).toByteArray()))
+            }
+            .options(idempotentCallOptions)
+            .call()
+            .response
 
-    val awakeableHolderClient = AwakeableHolderClient.fromClient(ingressClient, key)
+    val awakeableHolderClient = ingressClient.toVirtualObject<AwakeableHolder>(key)
 
     await withAlias
         "awakeable is registered" untilAsserted
         {
-          assertThat(awakeableHolderClient.hasAwakeable()).isTrue()
+          assertThat(awakeableHolderClient.request { hasAwakeable() }.call().response).isTrue()
         }
 
-    awakeableHolderClient.unlock("cancel", idempotentCallOptions)
+    awakeableHolderClient.request { unlock("cancel") }.options(idempotentCallOptions).call()
 
     // The termination signal might arrive before the blocking call to the cancel singleton was
     // made, so we need to retry.
     await withAlias
         "verify test" untilAsserted
         {
-          testUtilsClient.cancelInvocation(id, idempotentCallOptions)
-          withTimeout(1.seconds) { cancelTestClient.verifyTest(idempotentCallOptions) }
+          testUtilsClient.request { cancelInvocation(id) }.options(idempotentCallOptions).call()
+          withTimeout(1.seconds) {
+            cancelTestClient.request { verifyTest() }.options(idempotentCallOptions).call()
+          }
         }
 
     // Check that the singleton service is unlocked
     await withAlias
         "blocking service is unlocked" untilAsserted
         {
-          blockingServiceClient.isUnlocked()
+          blockingServiceClient.request { isUnlocked() }.call()
         }
   }
 }

@@ -8,7 +8,9 @@
 // https://github.com/restatedev/sdk-test-suite/blob/main/LICENSE
 package dev.restate.sdktesting.infra
 
+import dev.restate.common.reflections.ReflectionUtils
 import java.net.URI
+import kotlin.reflect.KClass
 import org.apache.logging.log4j.LogManager
 import org.testcontainers.Testcontainers
 import org.testcontainers.containers.GenericContainer
@@ -43,6 +45,9 @@ data class ServiceSpec(
       var envs: Map<String, String> = mapOf(),
       private var skipRegistration: Boolean = false,
   ) {
+
+    fun withServices(vararg svcClasses: KClass<*>): Builder =
+        withServices(*svcClasses.map { ReflectionUtils.extractServiceName(it.java) }.toTypedArray())
 
     fun withServices(vararg svcs: String) = apply { this.services += svcs.asList() }
 

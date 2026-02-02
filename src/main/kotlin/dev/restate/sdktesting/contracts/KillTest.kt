@@ -9,21 +9,19 @@
 package dev.restate.sdktesting.contracts
 
 import dev.restate.sdk.annotation.*
-import dev.restate.sdk.kotlin.ObjectContext
-import jdk.jfr.Name
 
 interface KillTest {
   @VirtualObject
   @Name("KillTestRunner")
   interface Runner {
-    @Handler suspend fun startCallTree(context: ObjectContext)
+    @Handler suspend fun startCallTree()
   }
 
   @VirtualObject
   @Name("KillTestSingleton")
   interface Singleton {
-    @Handler suspend fun recursiveCall(context: ObjectContext)
+    @Handler suspend fun recursiveCall()
 
-    @Handler suspend fun isUnlocked(context: ObjectContext)
+    @Handler suspend fun isUnlocked()
   }
 }

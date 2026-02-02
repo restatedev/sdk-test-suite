@@ -8,12 +8,7 @@
 // https://github.com/restatedev/sdk-test-suite/blob/main/LICENSE
 package dev.restate.sdktesting.contracts
 
-import dev.restate.sdk.annotation.Handler
-import dev.restate.sdk.annotation.Shared
-import dev.restate.sdk.annotation.VirtualObject
-import dev.restate.sdk.kotlin.ObjectContext
-import dev.restate.sdk.kotlin.SharedObjectContext
-import jdk.jfr.Name
+import dev.restate.sdk.annotation.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -81,15 +76,13 @@ interface VirtualObjectCommandInterpreter {
    * For each command, the output should be appended to the given list name. Returns the result of
    * the last command, or empty string otherwise.
    */
-  @Handler suspend fun interpretCommands(context: ObjectContext, req: InterpretRequest): String
+  @Handler suspend fun interpretCommands(req: InterpretRequest): String
 
-  @Shared
-  suspend fun resolveAwakeable(context: SharedObjectContext, resolveAwakeable: ResolveAwakeable)
+  @Shared suspend fun resolveAwakeable(resolveAwakeable: ResolveAwakeable)
 
-  @Shared
-  suspend fun rejectAwakeable(context: SharedObjectContext, rejectAwakeable: RejectAwakeable)
+  @Shared suspend fun rejectAwakeable(rejectAwakeable: RejectAwakeable)
 
-  @Shared suspend fun hasAwakeable(context: SharedObjectContext, awakeableKey: String): Boolean
+  @Shared suspend fun hasAwakeable(awakeableKey: String): Boolean
 
-  @Shared suspend fun getResults(context: SharedObjectContext): List<String>
+  @Shared suspend fun getResults(): List<String>
 }

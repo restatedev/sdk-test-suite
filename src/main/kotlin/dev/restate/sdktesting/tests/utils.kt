@@ -8,7 +8,7 @@
 // https://github.com/restatedev/sdk-test-suite/blob/main/LICENSE
 package dev.restate.sdktesting.tests
 
-import dev.restate.common.RequestBuilder
+import dev.restate.common.InvocationOptions
 import dev.restate.sdktesting.contracts.VirtualObjectCommandInterpreter
 import java.util.UUID
 import kotlin.time.Duration
@@ -23,7 +23,7 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.kotlin.additionalLoggingContext
 import org.awaitility.core.ConditionFactory
 
-val idempotentCallOptions: RequestBuilder<*, *>.() -> Unit = {
+val idempotentCallOptions: InvocationOptions.Builder.() -> Unit = {
   idempotencyKey = UUID.randomUUID().toString()
 }
 

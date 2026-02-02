@@ -11,7 +11,7 @@ package dev.restate.sdktesting.tests
 import dev.restate.client.Client
 import dev.restate.client.SendResponse.SendStatus
 import dev.restate.client.kotlin.*
-import dev.restate.sdktesting.contracts.*
+import dev.restate.sdktesting.contracts.BlockAndWaitWorkflow
 import dev.restate.sdktesting.infra.*
 import java.util.*
 import org.assertj.core.api.Assertions.assertThat
@@ -30,9 +30,7 @@ class WorkflowAPI {
   companion object {
     @RegisterExtension
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
-      withServiceSpec(
-          ServiceSpec.defaultBuilder()
-              .withServices(BlockAndWaitWorkflowHandlers.Metadata.SERVICE_NAME))
+      withServiceSpec(ServiceSpec.defaultBuilder().withServices(BlockAndWaitWorkflow::class))
     }
   }
 
@@ -40,25 +38,31 @@ class WorkflowAPI {
   @DisplayName("Set and resolve durable promise leads to completion")
   @Execution(ExecutionMode.CONCURRENT)
   fun setAndResolve(@InjectClient ingressClient: Client) = runTest {
-    val client = BlockAndWaitWorkflowClient.fromClient(ingressClient, UUID.randomUUID().toString())
+    val workflowId = UUID.randomUUID().toString()
+    val client = ingressClient.toWorkflow<BlockAndWaitWorkflow>(workflowId)
 
-    val sendResponse = client.submit("Francesco")
+    val sendResponse = client.request { run("Francesco") }.send()
     assertThat(sendResponse.sendStatus()).isEqualTo(SendStatus.ACCEPTED)
+    val workflowHandle = ingressClient.workflowHandle<String>("BlockAndWaitWorkflow", workflowId)
 
     // Wait state is set
-    await withAlias "state is not blank" untilAsserted { assertThat(client.getState()).isNotBlank }
+    await withAlias
+        "state is not blank" untilAsserted
+        {
+          assertThat(client.request { getState() }.call().response).isNotBlank
+        }
 
-    client.unblock("Till", idempotentCallOptions)
+    client.request { unblock("Till") }.options(idempotentCallOptions).call()
 
-    assertThat(client.workflowHandle().attach().response).isEqualTo("Till")
+    assertThat(workflowHandle.attachSuspend().response).isEqualTo("Till")
 
     // Can call get output again
-    assertThat(client.workflowHandle().getOutputSuspend().response.value).isEqualTo("Till")
+    assertThat(workflowHandle.getOutputSuspend().response.value).isEqualTo("Till")
 
     // Re-submit should have no effect
-    val secondSendResponse = client.submit("Francesco")
+    val secondSendResponse = client.request { run("Francesco") }.send()
     assertThat(secondSendResponse.sendStatus()).isEqualTo(SendStatus.PREVIOUSLY_ACCEPTED)
     assertThat(secondSendResponse.invocationId()).isEqualTo(sendResponse.invocationId())
-    assertThat(client.workflowHandle().getOutputSuspend().response.value).isEqualTo("Till")
+    assertThat(workflowHandle.getOutputSuspend().response.value).isEqualTo("Till")
   }
 }

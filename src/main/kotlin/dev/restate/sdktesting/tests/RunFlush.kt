@@ -9,7 +9,9 @@
 package dev.restate.sdktesting.tests
 
 import dev.restate.client.Client
-import dev.restate.sdktesting.contracts.*
+import dev.restate.client.kotlin.response
+import dev.restate.client.kotlin.toService
+import dev.restate.sdktesting.contracts.TestUtilsService
 import dev.restate.sdktesting.infra.InjectClient
 import dev.restate.sdktesting.infra.RestateDeployerExtension
 import dev.restate.sdktesting.infra.ServiceSpec
@@ -26,8 +28,7 @@ class RunFlush {
   companion object {
     @RegisterExtension
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
-      withServiceSpec(
-          ServiceSpec.defaultBuilder().withServices(TestUtilsServiceHandlers.Metadata.SERVICE_NAME))
+      withServiceSpec(ServiceSpec.defaultBuilder().withServices(TestUtilsService::class))
     }
   }
 
@@ -36,8 +37,12 @@ class RunFlush {
   @Execution(ExecutionMode.CONCURRENT)
   fun flush(@InjectClient ingressClient: Client) = runTest {
     assertThat(
-            TestUtilsServiceClient.fromClient(ingressClient)
-                .countExecutedSideEffects(3, idempotentCallOptions))
+            ingressClient
+                .toService<TestUtilsService>()
+                .request { countExecutedSideEffects(3) }
+                .options(idempotentCallOptions)
+                .call()
+                .response)
         .isEqualTo(0)
   }
 }

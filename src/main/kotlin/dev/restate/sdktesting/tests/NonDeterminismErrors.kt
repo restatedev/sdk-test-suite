@@ -9,11 +9,15 @@
 package dev.restate.sdktesting.tests
 
 import dev.restate.client.Client
+import dev.restate.client.kotlin.*
 import dev.restate.common.Request
 import dev.restate.common.Target
-import dev.restate.sdktesting.contracts.*
+import dev.restate.common.reflections.ReflectionUtils.extractServiceName
+import dev.restate.sdktesting.contracts.Counter
+import dev.restate.sdktesting.contracts.NonDeterministic
 import dev.restate.sdktesting.infra.*
 import dev.restate.serde.Serde
+import java.util.UUID
 import org.assertj.core.api.Assertions.*
 import org.awaitility.kotlin.await
 import org.awaitility.kotlin.withAlias
@@ -35,10 +39,7 @@ class NonDeterminismErrors {
       withEnv("RESTATE_DEFAULT_RETRY_POLICY__ON_MAX_ATTEMPTS", "kill")
       withEnv("RESTATE_DEFAULT_RETRY_POLICY__INITIAL_INTERVAL", "1ms")
       withServiceSpec(
-          ServiceSpec.defaultBuilder()
-              .withServices(
-                  NonDeterministicHandlers.Metadata.SERVICE_NAME,
-                  CounterHandlers.Metadata.SERVICE_NAME))
+          ServiceSpec.defaultBuilder().withServices(NonDeterministic::class, Counter::class))
     }
   }
 
@@ -53,21 +54,31 @@ class NonDeterminismErrors {
   @Execution(ExecutionMode.CONCURRENT)
   fun method(handlerName: String, @InjectClient ingressClient: Client) = runTest {
     // Increment the count first, this makes sure that the counter service is there.
-    val c = CounterClient.fromClient(ingressClient, handlerName)
-    c.add(1, idempotentCallOptions)
+    ingressClient
+        .toVirtualObject<Counter>(handlerName)
+        .request { add(1) }
+        .options(idempotentCallOptions)
+        .call()
 
     assertThatThrownBy {
           ingressClient.call(
               Request.of(
                       Target.virtualObject(
-                          NonDeterministicHandlers.Metadata.SERVICE_NAME, handlerName, handlerName),
+                          extractServiceName(NonDeterministic::class.java),
+                          handlerName,
+                          handlerName),
                       Serde.VOID,
                       Serde.VOID,
                       null)
-                  .also { idempotentCallOptions(it) })
+                  .also { it.idempotencyKey = UUID.randomUUID().toString() })
         }
         .isNotNull()
 
-    await withAlias "counter was not incremented" untilAsserted { assertThat(c.get()).isEqualTo(1) }
+    val counter = ingressClient.virtualObject<Counter>(handlerName)
+    await withAlias
+        "counter was not incremented" untilAsserted
+        {
+          assertThat(counter.get()).isEqualTo(1)
+        }
   }
 }
