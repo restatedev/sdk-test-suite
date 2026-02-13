@@ -47,6 +47,14 @@ object TestSuites {
               "RESTATE_WORKER__INVOKER__DISABLE_EAGER_STATE" to "true",
           ),
           "lazy-state")
+  private val LAZY_STATE_ALWAYS_SUSPENDING_SUITE =
+      TestSuite(
+          "lazyStateAlwaysSuspending",
+          mapOf(
+              "RESTATE_WORKER__INVOKER__DISABLE_EAGER_STATE" to "true",
+              "RESTATE_WORKER__INVOKER__INACTIVITY_TIMEOUT" to "0s",
+          ),
+          "lazy-state")
   private val PERSISTED_TIMERS_SUITE =
       TestSuite(
           "persistedTimers", mapOf("RESTATE_WORKER__NUM_TIMERS_IN_MEMORY_LIMIT" to "1"), "timers")
@@ -59,6 +67,7 @@ object TestSuites {
         THREE_NODES_ALWAYS_SUSPENDING_SUITE,
         SINGLE_THREAD_SINGLE_PARTITION_SUITE,
         LAZY_STATE_SUITE,
+        LAZY_STATE_ALWAYS_SUSPENDING_SUITE,
         PERSISTED_TIMERS_SUITE)
   }
 
@@ -79,6 +88,8 @@ object TestSuites {
                     SINGLE_THREAD_SINGLE_PARTITION_SUITE.name ->
                         listOf(SINGLE_THREAD_SINGLE_PARTITION_SUITE)
                     LAZY_STATE_SUITE.name -> listOf(LAZY_STATE_SUITE)
+                    LAZY_STATE_ALWAYS_SUSPENDING_SUITE.name ->
+                        listOf(LAZY_STATE_ALWAYS_SUSPENDING_SUITE)
                     PERSISTED_TIMERS_SUITE.name -> listOf(PERSISTED_TIMERS_SUITE)
                     else -> {
                       throw IllegalArgumentException("Unexpected suite name $suite")
