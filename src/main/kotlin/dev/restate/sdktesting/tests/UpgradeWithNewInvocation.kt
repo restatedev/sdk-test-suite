@@ -14,7 +14,9 @@ import dev.restate.admin.client.ApiException
 import dev.restate.admin.model.RegisterDeploymentRequest
 import dev.restate.admin.model.RegisterHttpDeploymentRequest
 import dev.restate.client.Client
-import dev.restate.sdktesting.contracts.*
+import dev.restate.client.kotlin.response
+import dev.restate.client.kotlin.toVirtualObject
+import dev.restate.sdktesting.contracts.VirtualObjectCommandInterpreter
 import dev.restate.sdktesting.contracts.VirtualObjectCommandInterpreter.InterpretRequest
 import dev.restate.sdktesting.infra.*
 import java.net.URI
@@ -40,12 +42,12 @@ class UpgradeWithNewInvocation {
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
       withServiceSpec(
           ServiceSpec.builder("version1")
-              .withServices(VirtualObjectCommandInterpreterHandlers.Metadata.SERVICE_NAME)
+              .withServices(VirtualObjectCommandInterpreter::class)
               .withEnv(UPGRADE_TEST_ENV, "v1"))
       withServiceSpec(
           ServiceSpec.builder("version2")
               .skipRegistration()
-              .withServices(VirtualObjectCommandInterpreterHandlers.Metadata.SERVICE_NAME)
+              .withServices(VirtualObjectCommandInterpreter::class)
               .withEnv(UPGRADE_TEST_ENV, "v2"))
     }
 
@@ -74,13 +76,15 @@ class UpgradeWithNewInvocation {
       @InjectAdminURI adminURI: URI
   ) = runTest {
     val interpreter =
-        VirtualObjectCommandInterpreterClient.fromClient(
-            ingressClient, UUID.randomUUID().toString())
+        ingressClient.toVirtualObject<VirtualObjectCommandInterpreter>(UUID.randomUUID().toString())
 
     // Execute the first request
     val firstResult =
-        interpreter.interpretCommands(
-            InterpretRequest.getEnvVariable(UPGRADE_TEST_ENV), idempotentCallOptions)
+        interpreter
+            .request { interpretCommands(InterpretRequest.getEnvVariable(UPGRADE_TEST_ENV)) }
+            .options(idempotentCallOptions)
+            .call()
+            .response
     assertThat(firstResult).isEqualTo("v1")
 
     // Now register the update
@@ -94,7 +98,12 @@ class UpgradeWithNewInvocation {
         "should now use service v2" untilAsserted
         {
           assertThat(
-                  interpreter.interpretCommands(InterpretRequest.getEnvVariable(UPGRADE_TEST_ENV)))
+                  interpreter
+                      .request {
+                        interpretCommands(InterpretRequest.getEnvVariable(UPGRADE_TEST_ENV))
+                      }
+                      .call()
+                      .response)
               .isEqualTo("v2")
         }
   }

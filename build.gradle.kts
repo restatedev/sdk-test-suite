@@ -6,7 +6,6 @@ plugins {
   kotlin("jvm") version "2.1.10"
   kotlin("plugin.serialization") version "2.1.10"
 
-  alias(libs.plugins.ksp)
   id("org.jsonschema2pojo") version "1.2.2"
   alias(libs.plugins.openapi.generator)
 
@@ -39,8 +38,6 @@ dependencies {
   implementation(libs.clikt)
   implementation(libs.mordant)
 
-  ksp(libs.restate.sdk.api.kotlin.gen)
-  implementation(libs.restate.sdk.api.kotlin)
   implementation(libs.restate.sdk.client.kotlin)
 
   implementation(libs.junit.all)

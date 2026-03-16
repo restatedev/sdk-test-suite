@@ -9,7 +9,8 @@
 package dev.restate.sdktesting.tests
 
 import dev.restate.client.Client
-import dev.restate.sdktesting.contracts.*
+import dev.restate.client.kotlin.toService
+import dev.restate.sdktesting.contracts.TestUtilsService
 import dev.restate.sdktesting.infra.InjectClient
 import dev.restate.sdktesting.infra.RestateDeployerExtension
 import dev.restate.sdktesting.infra.ServiceSpec
@@ -37,8 +38,7 @@ class Sleep {
   companion object {
     @RegisterExtension
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
-      withServiceSpec(
-          ServiceSpec.defaultBuilder().withServices(TestUtilsServiceHandlers.Metadata.SERVICE_NAME))
+      withServiceSpec(ServiceSpec.defaultBuilder().withServices(TestUtilsService::class))
     }
   }
 
@@ -48,8 +48,11 @@ class Sleep {
     val sleepDuration = 10.milliseconds
 
     val elapsed = measureNanoTime {
-      TestUtilsServiceClient.fromClient(ingressClient)
-          .sleepConcurrently(listOf(sleepDuration.inWholeMilliseconds), idempotentCallOptions)
+      ingressClient
+          .toService<TestUtilsService>()
+          .request { sleepConcurrently(listOf(sleepDuration.inWholeMilliseconds)) }
+          .options(idempotentCallOptions)
+          .call()
     }
 
     assertThat(elapsed.nanoseconds).isGreaterThanOrEqualTo(sleepDuration)
@@ -65,19 +68,23 @@ class Sleep {
         val sleepsPerInvocation = 20
         val concurrentSleepInvocations = 50
 
-        val coordinatorClient = TestUtilsServiceClient.fromClient(ingressClient)
+        val coordinatorClient = ingressClient.toService<TestUtilsService>()
 
         // Range is inclusive
         (1..concurrentSleepInvocations)
             .map {
               launch {
-                coordinatorClient.sleepConcurrently(
-                    (1..sleepsPerInvocation).map {
-                      Random.nextLong(
-                          minSleepDuration.inWholeMilliseconds..maxSleepDuration
-                                  .inWholeMilliseconds)
-                    },
-                    idempotentCallOptions)
+                coordinatorClient
+                    .request {
+                      sleepConcurrently(
+                          (1..sleepsPerInvocation).map {
+                            Random.nextLong(
+                                minSleepDuration.inWholeMilliseconds..maxSleepDuration
+                                        .inWholeMilliseconds)
+                          })
+                    }
+                    .options(idempotentCallOptions)
+                    .call()
               }
             }
             .joinAll()

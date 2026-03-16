@@ -9,11 +9,16 @@
 package dev.restate.sdktesting.tests
 
 import dev.restate.client.Client
-import dev.restate.sdktesting.contracts.*
+import dev.restate.client.kotlin.response
+import dev.restate.client.kotlin.toService
+import dev.restate.client.kotlin.toVirtualObject
+import dev.restate.common.reflections.ReflectionUtils.extractServiceName
+import dev.restate.sdktesting.contracts.ListObject
+import dev.restate.sdktesting.contracts.Proxy
 import dev.restate.sdktesting.infra.InjectClient
 import dev.restate.sdktesting.infra.RestateDeployerExtension
 import dev.restate.sdktesting.infra.ServiceSpec
-import java.util.UUID
+import java.util.*
 import java.util.stream.Stream
 import kotlinx.serialization.json.Json
 import org.assertj.core.api.Assertions.assertThat
@@ -29,10 +34,7 @@ class CallOrdering {
   companion object {
     @RegisterExtension
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
-      withServiceSpec(
-          ServiceSpec.defaultBuilder()
-              .withServices(
-                  ProxyHandlers.Metadata.SERVICE_NAME, ListObjectHandlers.Metadata.SERVICE_NAME))
+      withServiceSpec(ServiceSpec.defaultBuilder().withServices(Proxy::class, ListObject::class))
     }
 
     @JvmStatic
@@ -57,25 +59,36 @@ class CallOrdering {
   ) = runTest {
     val listName = UUID.randomUUID().toString()
 
-    ProxyClient.fromClient(ingressClient)
-        .manyCalls(
-            ordering.mapIndexed { index, executeAsBackgroundCall ->
-              val proxyRequest =
-                  ProxyRequest(
-                      ListObjectHandlers.Metadata.SERVICE_NAME,
-                      listName,
-                      "append",
-                      Json.encodeToString(index.toString()).encodeToByteArray())
+    ingressClient
+        .toService<Proxy>()
+        .request {
+          manyCalls(
+              ordering.mapIndexed { index, executeAsBackgroundCall ->
+                val proxyRequest =
+                    Proxy.ProxyRequest(
+                        extractServiceName(ListObject::class.java),
+                        listName,
+                        "append",
+                        Json.encodeToString(index.toString()).encodeToByteArray())
 
-              if (executeAsBackgroundCall) {
-                ManyCallRequest(proxyRequest, true, false)
-              } else {
-                ManyCallRequest(proxyRequest, false, true)
-              }
-            },
-            idempotentCallOptions)
+                if (executeAsBackgroundCall) {
+                  Proxy.ManyCallRequest(proxyRequest, true, false)
+                } else {
+                  Proxy.ManyCallRequest(proxyRequest, false, true)
+                }
+              },
+          )
+        }
+        .options(idempotentCallOptions)
+        .call()
 
-    assertThat(ListObjectClient.fromClient(ingressClient, listName).clear(idempotentCallOptions))
+    assertThat(
+            ingressClient
+                .toVirtualObject<ListObject>(listName)
+                .request { clear() }
+                .options(idempotentCallOptions)
+                .call()
+                .response)
         .containsExactly("0", "1", "2")
   }
 }

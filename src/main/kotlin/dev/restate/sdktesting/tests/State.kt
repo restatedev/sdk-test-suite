@@ -9,8 +9,14 @@
 package dev.restate.sdktesting.tests
 
 import dev.restate.client.Client
-import dev.restate.sdktesting.contracts.*
+import dev.restate.client.kotlin.response
+import dev.restate.client.kotlin.toService
+import dev.restate.client.kotlin.toVirtualObject
+import dev.restate.common.reflections.ReflectionUtils.extractServiceName
+import dev.restate.sdktesting.contracts.Counter
+import dev.restate.sdktesting.contracts.MapObject
 import dev.restate.sdktesting.contracts.MapObject.Entry
+import dev.restate.sdktesting.contracts.Proxy
 import dev.restate.sdktesting.infra.InjectClient
 import dev.restate.sdktesting.infra.RestateDeployerExtension
 import dev.restate.sdktesting.infra.ServiceSpec
@@ -33,11 +39,7 @@ class State {
     @RegisterExtension
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
       withServiceSpec(
-          ServiceSpec.defaultBuilder()
-              .withServices(
-                  CounterHandlers.Metadata.SERVICE_NAME,
-                  ProxyHandlers.Metadata.SERVICE_NAME,
-                  MapObjectHandlers.Metadata.SERVICE_NAME))
+          ServiceSpec.defaultBuilder().withServices(Counter::class, Proxy::class, MapObject::class))
     }
   }
 
@@ -45,12 +47,12 @@ class State {
   @Execution(ExecutionMode.CONCURRENT)
   fun add(@InjectClient ingressClient: Client) = runTest {
     val counterId = UUID.randomUUID().toString()
-    val counterClient = CounterClient.fromClient(ingressClient, counterId)
-    val res1 = counterClient.add(1, idempotentCallOptions)
+    val counterClient = ingressClient.toVirtualObject<Counter>(counterId)
+    val res1 = counterClient.request { add(1) }.options(idempotentCallOptions).call().response
     assertThat(res1.oldValue).isEqualTo(0)
     assertThat(res1.newValue).isEqualTo(1)
 
-    val res2 = counterClient.add(2, idempotentCallOptions)
+    val res2 = counterClient.request { add(2) }.options(idempotentCallOptions).call().response
     assertThat(res2.oldValue).isEqualTo(1)
     assertThat(res2.newValue).isEqualTo(3)
   }
@@ -59,45 +61,63 @@ class State {
   @Execution(ExecutionMode.CONCURRENT)
   fun proxyOneWayAdd(@InjectClient ingressClient: Client) = runTest {
     val counterId = UUID.randomUUID().toString()
-    val proxyClient = ProxyClient.fromClient(ingressClient)
-    val counterClient = CounterClient.fromClient(ingressClient, counterId)
+    val proxyClient = ingressClient.toService<Proxy>()
+    val counterClient = ingressClient.toVirtualObject<Counter>(counterId)
 
     for (x in 0.rangeUntil(3)) {
-      proxyClient.oneWayCall(
-          ProxyRequest(
-              CounterHandlers.Metadata.SERVICE_NAME,
-              counterId,
-              "add",
-              Json.encodeToString(1).encodeToByteArray()),
-          idempotentCallOptions)
+      proxyClient
+          .request {
+            oneWayCall(
+                Proxy.ProxyRequest(
+                    extractServiceName(Counter::class.java),
+                    counterId,
+                    "add",
+                    Json.encodeToString(1).encodeToByteArray()))
+          }
+          .options(idempotentCallOptions)
+          .call()
     }
 
-    await untilAsserted { assertThat(counterClient.get()).isEqualTo(3L) }
+    await untilAsserted
+        {
+          assertThat(counterClient.request { get() }.call().response).isEqualTo(3L)
+        }
   }
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   fun listStateAndClearAll(@InjectClient ingressClient: Client) = runTest {
     val mapName = UUID.randomUUID().toString()
-    val mapObj = MapObjectClient.fromClient(ingressClient, mapName)
-    val anotherMapObj = MapObjectClient.fromClient(ingressClient, mapName + "1")
+    val mapObj = ingressClient.toVirtualObject<MapObject>(mapName)
+    val anotherMapObj = ingressClient.toVirtualObject<MapObject>(mapName + "1")
 
-    mapObj.set(Entry("my-key-0", "my-value-0"), idempotentCallOptions)
-    mapObj.set(Entry("my-key-1", "my-value-1"), idempotentCallOptions)
+    mapObj.request { set(Entry("my-key-0", "my-value-0")) }.options(idempotentCallOptions).call()
+    mapObj.request { set(Entry("my-key-1", "my-value-1")) }.options(idempotentCallOptions).call()
 
     // Set state to another map
-    anotherMapObj.set(Entry("my-key-2", "my-value-2"), idempotentCallOptions)
+    anotherMapObj
+        .request { set(Entry("my-key-2", "my-value-2")) }
+        .options(idempotentCallOptions)
+        .call()
 
     // Clear all
-    assertThat(mapObj.clearAll(idempotentCallOptions))
+    assertThat(mapObj.request { clearAll() }.options(idempotentCallOptions).call().response)
         .map(Function { it.key })
         .containsExactlyInAnyOrder("my-key-0", "my-key-1")
 
     // Check keys are not available
-    assertThat(mapObj.get("my-key-0", idempotentCallOptions)).isEmpty()
-    assertThat(mapObj.get("my-key-1", idempotentCallOptions)).isEmpty()
+    assertThat(mapObj.request { get("my-key-0") }.options(idempotentCallOptions).call().response)
+        .isEmpty()
+    assertThat(mapObj.request { get("my-key-1") }.options(idempotentCallOptions).call().response)
+        .isEmpty()
 
     // Check the other service instance was left untouched
-    assertThat(anotherMapObj.get("my-key-2", idempotentCallOptions)).isEqualTo("my-value-2")
+    assertThat(
+            anotherMapObj
+                .request { get("my-key-2") }
+                .options(idempotentCallOptions)
+                .call()
+                .response)
+        .isEqualTo("my-value-2")
   }
 }

@@ -9,7 +9,8 @@
 package dev.restate.sdktesting.tests
 
 import dev.restate.client.Client
-import dev.restate.sdktesting.contracts.*
+import dev.restate.client.kotlin.*
+import dev.restate.sdktesting.contracts.VirtualObjectCommandInterpreter
 import dev.restate.sdktesting.contracts.VirtualObjectCommandInterpreter.AwaitAny
 import dev.restate.sdktesting.contracts.VirtualObjectCommandInterpreter.AwaitAnySuccessful
 import dev.restate.sdktesting.contracts.VirtualObjectCommandInterpreter.AwaitAwakeableOrTimeout
@@ -39,8 +40,7 @@ class Combinators {
     @RegisterExtension
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
       withServiceSpec(
-          ServiceSpec.defaultBuilder()
-              .withServices(VirtualObjectCommandInterpreterHandlers.Metadata.SERVICE_NAME))
+          ServiceSpec.defaultBuilder().withServices(VirtualObjectCommandInterpreter::class))
     }
   }
 
@@ -52,12 +52,18 @@ class Combinators {
     val timeout = Duration.ofMillis(100L)
 
     assertThat(
-            VirtualObjectCommandInterpreterClient.fromClient(ingressClient, testId)
-                .interpretCommands(
-                    InterpretRequest(
-                        listOf(
-                            AwaitAny(listOf(CreateAwakeable("awk1"), Sleep(timeout.toMillis()))))),
-                    idempotentCallOptions))
+            ingressClient
+                .toVirtualObject<VirtualObjectCommandInterpreter>(testId)
+                .request {
+                  interpretCommands(
+                      InterpretRequest(
+                          listOf(
+                              AwaitAny(
+                                  listOf(CreateAwakeable("awk1"), Sleep(timeout.toMillis()))))))
+                }
+                .options(idempotentCallOptions)
+                .call()
+                .response)
         .isEqualTo("sleep")
   }
 
@@ -71,13 +77,18 @@ class Combinators {
 
         assertThat(
                 runCatching {
-                      VirtualObjectCommandInterpreterClient.fromClient(ingressClient, testId)
-                          .interpretCommands(
-                              InterpretRequest(
-                                  listOf(
-                                      AwaitAwakeableOrTimeout(
-                                          "should-timeout-awk", timeout.toMillis()))),
-                              idempotentCallOptions)
+                      ingressClient
+                          .toVirtualObject<VirtualObjectCommandInterpreter>(testId)
+                          .request {
+                            interpretCommands(
+                                InterpretRequest(
+                                    listOf(
+                                        AwaitAwakeableOrTimeout(
+                                            "should-timeout-awk", timeout.toMillis()))))
+                          }
+                          .options(idempotentCallOptions)
+                          .call()
+                          .response
                     }
                     .exceptionOrNull())
             .message()
@@ -89,43 +100,66 @@ class Combinators {
   @Execution(ExecutionMode.CONCURRENT)
   fun firstSuccessfulCompletedAwakeable(@InjectClient ingressClient: Client) = runTest {
     val testId = UUID.randomUUID().toString()
-    val interpreterClient = VirtualObjectCommandInterpreterClient.fromClient(ingressClient, testId)
+    val interpreterClient = ingressClient.toVirtualObject<VirtualObjectCommandInterpreter>(testId)
     val awk0 = "awk0"
     val awk1 = "awk1"
     val awk2 = "awk2"
 
     val result = async {
-      interpreterClient.interpretCommands(
-          InterpretRequest(
-              listOf(
-                  AwaitAnySuccessful(
-                      listOf(
-                          CreateAwakeable(awk0),
-                          RunThrowTerminalException("run0"),
-                          CreateAwakeable(awk1),
-                          RunThrowTerminalException("run1"),
-                          CreateAwakeable(awk2),
-                          RunThrowTerminalException("run2"),
-                      )))),
-          idempotentCallOptions)
+      interpreterClient
+          .request {
+            interpretCommands(
+                InterpretRequest(
+                    listOf(
+                        AwaitAnySuccessful(
+                            listOf(
+                                CreateAwakeable(awk0),
+                                RunThrowTerminalException("run0"),
+                                CreateAwakeable(awk1),
+                                RunThrowTerminalException("run1"),
+                                CreateAwakeable(awk2),
+                                RunThrowTerminalException("run2"),
+                            )))))
+          }
+          .options(idempotentCallOptions)
+          .call()
+          .response
     }
 
     await withAlias
         "awakeable $awk2 created" untilAsserted
         {
-          assertThat(interpreterClient.hasAwakeable(awk2)).isTrue()
+          assertThat(interpreterClient.request { hasAwakeable(awk2) }.call().response).isTrue()
         }
 
     // hasAwakeable might have to be retried in case of leadership changes
-    assertThat(interpreterClient.hasAwakeable(awk0, idempotentCallOptions)).isTrue()
+    assertThat(
+            interpreterClient
+                .request { hasAwakeable(awk0) }
+                .options(idempotentCallOptions)
+                .call()
+                .response)
+        .isTrue()
     // hasAwakeable might have to be retried in case of leadership changes
-    assertThat(interpreterClient.hasAwakeable(awk1, idempotentCallOptions)).isTrue()
+    assertThat(
+            interpreterClient
+                .request { hasAwakeable(awk1) }
+                .options(idempotentCallOptions)
+                .call()
+                .response)
+        .isTrue()
 
     // Now let's reject awakeable 2, this should not complete anything
-    interpreterClient.rejectAwakeable(RejectAwakeable(awk2, "fail"), idempotentCallOptions)
+    interpreterClient
+        .request { rejectAwakeable(RejectAwakeable(awk2, "fail")) }
+        .options(idempotentCallOptions)
+        .call()
 
     // Resolve awakeable 1, this will complete successfully
-    interpreterClient.resolveAwakeable(ResolveAwakeable(awk1, "awk1-result"), idempotentCallOptions)
+    interpreterClient
+        .request { resolveAwakeable(ResolveAwakeable(awk1, "awk1-result")) }
+        .options(idempotentCallOptions)
+        .call()
 
     assertThat(result.await()).isEqualTo("awk1-result")
   }

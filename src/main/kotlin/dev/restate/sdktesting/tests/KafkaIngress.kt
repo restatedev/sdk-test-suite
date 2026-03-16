@@ -12,7 +12,10 @@ import dev.restate.admin.api.SubscriptionApi
 import dev.restate.admin.client.ApiClient
 import dev.restate.admin.model.CreateSubscriptionRequest
 import dev.restate.client.Client
-import dev.restate.sdktesting.contracts.*
+import dev.restate.client.kotlin.*
+import dev.restate.common.reflections.ReflectionUtils.extractServiceName
+import dev.restate.sdktesting.contracts.Counter
+import dev.restate.sdktesting.contracts.Proxy
 import dev.restate.sdktesting.infra.*
 import dev.restate.sdktesting.infra.runtimeconfig.IngressOptions
 import dev.restate.sdktesting.infra.runtimeconfig.KafkaClusterOptions
@@ -56,10 +59,7 @@ class KafkaIngress {
 
     @RegisterExtension
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
-      withServiceSpec(
-          ServiceSpec.defaultBuilder()
-              .withServices(
-                  ProxyHandlers.Metadata.SERVICE_NAME, CounterHandlers.Metadata.SERVICE_NAME))
+      withServiceSpec(ServiceSpec.defaultBuilder().withServices(Proxy::class, Counter::class))
       withContainer("kafka", KafkaContainer())
       withConfig(kafkaClusterOptions())
     }
@@ -81,7 +81,7 @@ class KafkaIngress {
     subscriptionsClient.createSubscription(
         CreateSubscriptionRequest()
             .source("kafka://my-cluster/$COUNTER_TOPIC")
-            .sink("service://${CounterHandlers.Metadata.SERVICE_NAME}/add")
+            .sink("service://${extractServiceName(Counter::class.java)}/add")
             .options(mapOf("auto.offset.reset" to "earliest")))
 
     // Produce message to kafka
@@ -93,7 +93,9 @@ class KafkaIngress {
     await withAlias
         "Updates from Kafka are visible in the counter" untilAsserted
         {
-          assertThat(CounterClient.fromClient(ingressClient, counter).get()).isEqualTo(6L)
+          assertThat(
+                  ingressClient.toVirtualObject<Counter>(counter).request { get() }.call().response)
+              .isEqualTo(6L)
         }
   }
 
@@ -113,7 +115,7 @@ class KafkaIngress {
     subscriptionsClient.createSubscription(
         CreateSubscriptionRequest()
             .source("kafka://my-cluster/$EVENT_HANDLER_TOPIC")
-            .sink("service://${ProxyHandlers.Metadata.SERVICE_NAME}/oneWayCall")
+            .sink("service://${extractServiceName(Proxy::class.java)}/oneWayCall")
             .options(mapOf("auto.offset.reset" to "earliest")))
 
     // Produce message to kafka
@@ -123,22 +125,22 @@ class KafkaIngress {
         listOf(
             null to
                 Json.encodeToString(
-                    ProxyRequest(
-                        CounterHandlers.Metadata.SERVICE_NAME,
+                    Proxy.ProxyRequest(
+                        extractServiceName(Counter::class.java),
                         counter,
                         "add",
                         Json.encodeToString(1).encodeToByteArray())),
             null to
                 Json.encodeToString(
-                    ProxyRequest(
-                        CounterHandlers.Metadata.SERVICE_NAME,
+                    Proxy.ProxyRequest(
+                        extractServiceName(Counter::class.java),
                         counter,
                         "add",
                         Json.encodeToString(2).encodeToByteArray())),
             null to
                 Json.encodeToString(
-                    ProxyRequest(
-                        CounterHandlers.Metadata.SERVICE_NAME,
+                    Proxy.ProxyRequest(
+                        extractServiceName(Counter::class.java),
                         counter,
                         "add",
                         Json.encodeToString(3).encodeToByteArray())),
@@ -147,7 +149,9 @@ class KafkaIngress {
     await withAlias
         "Updates from Kafka are visible in the counter" untilAsserted
         {
-          assertThat(CounterClient.fromClient(ingressClient, counter).get()).isEqualTo(6L)
+          assertThat(
+                  ingressClient.toVirtualObject<Counter>(counter).request { get() }.call().response)
+              .isEqualTo(6L)
         }
   }
 }

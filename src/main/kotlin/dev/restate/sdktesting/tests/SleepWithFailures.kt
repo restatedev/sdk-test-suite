@@ -9,7 +9,8 @@
 package dev.restate.sdktesting.tests
 
 import dev.restate.client.Client
-import dev.restate.sdktesting.contracts.*
+import dev.restate.client.kotlin.toService
+import dev.restate.sdktesting.contracts.TestUtilsService
 import dev.restate.sdktesting.infra.*
 import java.util.concurrent.TimeUnit
 import kotlin.random.Random
@@ -33,8 +34,7 @@ class SleepWithFailures {
   companion object {
     @RegisterExtension
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
-      withServiceSpec(
-          ServiceSpec.defaultBuilder().withServices(TestUtilsServiceHandlers.Metadata.SERVICE_NAME))
+      withServiceSpec(ServiceSpec.defaultBuilder().withServices(TestUtilsService::class))
     }
 
     private val DEFAULT_SLEEP_DURATION = 4.seconds
@@ -48,8 +48,11 @@ class SleepWithFailures {
     val start = TimeSource.Monotonic.markNow()
     val job = coroutineScope {
       launch {
-        TestUtilsServiceClient.fromClient(ingressClient)
-            .sleepConcurrently(listOf(sleepDuration.inWholeMilliseconds), idempotentCallOptions)
+        ingressClient
+            .toService<TestUtilsService>()
+            .request { sleepConcurrently(listOf(sleepDuration.inWholeMilliseconds)) }
+            .options(idempotentCallOptions)
+            .call()
       }
     }
     delay(

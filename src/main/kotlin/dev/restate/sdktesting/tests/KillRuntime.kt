@@ -9,7 +9,8 @@
 package dev.restate.sdktesting.tests
 
 import dev.restate.client.jdk.JdkClient
-import dev.restate.sdktesting.contracts.*
+import dev.restate.client.kotlin.*
+import dev.restate.sdktesting.contracts.Counter
 import dev.restate.sdktesting.infra.*
 import java.net.http.HttpClient
 import java.time.Duration
@@ -36,8 +37,7 @@ class KillRuntime {
     @JvmStatic
     @RegisterExtension
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
-      withServiceSpec(
-          ServiceSpec.defaultBuilder().withServices(CounterHandlers.Metadata.SERVICE_NAME))
+      withServiceSpec(ServiceSpec.defaultBuilder().withServices(Counter::class))
     }
   }
 
@@ -47,11 +47,17 @@ class KillRuntime {
       @InjectContainerHandle(RESTATE_RUNTIME) runtimeHandle: ContainerHandle
   ) = runTest {
     // We instantiate the client manually, in order to close it before killing and restarting
-    var httpClient = HttpClient.newHttpClient()
-    var ingressClient =
+    val httpClient = HttpClient.newHttpClient()
+    val ingressClient =
         JdkClient.of(
             httpClient, "http://127.0.0.1:${runtimeHandle.getMappedPort(8080)!!}", null, null)
-    val res1 = CounterClient.fromClient(ingressClient, "my-key").add(1, idempotentCallOptions)
+    val res1 =
+        ingressClient
+            .toVirtualObject<Counter>("my-key")
+            .request { add(1) }
+            .options(idempotentCallOptions)
+            .call()
+            .response
     assertThat(res1.oldValue).isEqualTo(0)
     assertThat(res1.newValue).isEqualTo(1)
 
@@ -77,9 +83,12 @@ class KillRuntime {
                   httpClient, "http://127.0.0.1:${runtimeHandle.getMappedPort(8080)!!}", null, null)
           val res2 =
               withTimeout(5.seconds) {
-                CounterClient.fromClient(ingressClient, "my-key").add(2) {
-                  this.idempotencyKey = idempotencyKey
-                }
+                ingressClient
+                    .toVirtualObject<Counter>("my-key")
+                    .request { add(2) }
+                    .options { this.idempotencyKey = idempotencyKey }
+                    .call()
+                    .response
               }
           assertThat(res2.oldValue).isEqualTo(1)
           assertThat(res2.newValue).isEqualTo(3)

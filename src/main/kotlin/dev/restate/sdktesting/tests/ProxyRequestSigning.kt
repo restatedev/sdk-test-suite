@@ -9,7 +9,9 @@
 package dev.restate.sdktesting.tests
 
 import dev.restate.client.Client
-import dev.restate.sdktesting.contracts.*
+import dev.restate.client.kotlin.response
+import dev.restate.client.kotlin.toVirtualObject
+import dev.restate.sdktesting.contracts.Counter
 import dev.restate.sdktesting.infra.InjectClient
 import dev.restate.sdktesting.infra.RestateDeployerExtension
 import dev.restate.sdktesting.infra.ServiceSpec
@@ -38,7 +40,7 @@ MC4CAQAwBQYDK2VwBCIEIHsQRVQ+AZX9/Yy1b0Zw+OA+bb7xDxGsAd5kB45jZhoc
       withEnv("RESTATE_REQUEST_IDENTITY_PRIVATE_KEY_PEM_FILE", "/a.pem")
       withServiceSpec(
           ServiceSpec.builder("service-with-request-signing")
-              .withServices(CounterHandlers.Metadata.SERVICE_NAME)
+              .withServices(Counter::class)
               .withEnv(E2E_REQUEST_SIGNING_ENV, SIGNING_KEY)
               .build())
     }
@@ -48,9 +50,9 @@ MC4CAQAwBQYDK2VwBCIEIHsQRVQ+AZX9/Yy1b0Zw+OA+bb7xDxGsAd5kB45jZhoc
   @Execution(ExecutionMode.CONCURRENT)
   fun requestSigningPass(@InjectClient ingressClient: Client) = runTest {
     val counterName = UUID.randomUUID().toString()
-    val client = CounterClient.fromClient(ingressClient, counterName)
+    val client = ingressClient.toVirtualObject<Counter>(counterName)
 
-    client.add(1, idempotentCallOptions)
-    assertThat(client.get(idempotentCallOptions)).isEqualTo(1)
+    client.request { add(1) }.options(idempotentCallOptions).call()
+    assertThat(client.request { get() }.options(idempotentCallOptions).call().response).isEqualTo(1)
   }
 }

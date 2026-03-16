@@ -9,7 +9,9 @@
 package dev.restate.sdktesting.tests
 
 import dev.restate.client.Client
-import dev.restate.sdktesting.contracts.*
+import dev.restate.client.kotlin.*
+import dev.restate.sdktesting.contracts.Counter
+import dev.restate.sdktesting.contracts.Failing
 import dev.restate.sdktesting.infra.*
 import java.util.*
 import org.assertj.core.api.Assertions.assertThat
@@ -28,10 +30,7 @@ class UserErrors {
   companion object {
     @RegisterExtension
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
-      withServiceSpec(
-          ServiceSpec.defaultBuilder()
-              .withServices(
-                  FailingHandlers.Metadata.SERVICE_NAME, CounterHandlers.Metadata.SERVICE_NAME))
+      withServiceSpec(ServiceSpec.defaultBuilder().withServices(Failing::class, Counter::class))
     }
   }
 
@@ -43,8 +42,12 @@ class UserErrors {
 
     assertThat(
             runCatching {
-                  FailingClient.fromClient(ingressClient, UUID.randomUUID().toString())
-                      .terminallyFailingCall(errorMessage, idempotentCallOptions)
+                  ingressClient
+                      .toVirtualObject<Failing>(UUID.randomUUID().toString())
+                      .request { terminallyFailingCall(errorMessage) }
+                      .options(idempotentCallOptions)
+                      .call()
+                      .response
                 }
                 .exceptionOrNull())
         .hasMessageContaining(errorMessage)
@@ -65,13 +68,17 @@ class UserErrors {
   @Execution(ExecutionMode.CONCURRENT)
   fun setStateThenFailShouldPersistState(@InjectClient ingressClient: Client) = runTest {
     val counterName = "my-failure-counter"
-    val counterClient = CounterClient.fromClient(ingressClient, counterName)
+    val counterClient = ingressClient.toVirtualObject<Counter>(counterName)
 
     assertThat(
-            runCatching { counterClient.addThenFail(1, idempotentCallOptions) }.exceptionOrNull())
+            runCatching {
+                  counterClient.request { addThenFail(1) }.options(idempotentCallOptions).call()
+                }
+                .exceptionOrNull())
         .hasMessageContaining(counterName)
 
-    assertThat(counterClient.get(idempotentCallOptions)).isEqualTo(1)
+    assertThat(counterClient.request { get() }.options(idempotentCallOptions).call().response)
+        .isEqualTo(1)
   }
 
   @DisplayName("Test propagate failure from another service")
@@ -79,11 +86,15 @@ class UserErrors {
   @Execution(ExecutionMode.CONCURRENT)
   fun internalCallFailurePropagation(@InjectClient ingressClient: Client) = runTest {
     val errorMessage = "propagated error"
-    val failingClient = FailingClient.fromClient(ingressClient, UUID.randomUUID().toString())
+    val failingClient = ingressClient.toVirtualObject<Failing>(UUID.randomUUID().toString())
 
     assertThat(
             runCatching {
-                  failingClient.callTerminallyFailingCall(errorMessage, idempotentCallOptions)
+                  failingClient
+                      .request { callTerminallyFailingCall(errorMessage) }
+                      .options(idempotentCallOptions)
+                      .call()
+                      .response
                 }
                 .exceptionOrNull())
         .hasMessageContaining(errorMessage)
@@ -94,8 +105,12 @@ class UserErrors {
   @Execution(ExecutionMode.CONCURRENT)
   fun invocationWithEventualSuccess(@InjectClient ingressClient: Client) = runTest {
     assertThat(
-            FailingClient.fromClient(ingressClient, UUID.randomUUID().toString())
-                .failingCallWithEventualSuccess(idempotentCallOptions))
+            ingressClient
+                .toVirtualObject<Failing>(UUID.randomUUID().toString())
+                .request { failingCallWithEventualSuccess() }
+                .options(idempotentCallOptions)
+                .call()
+                .response)
         .isEqualTo(SUCCESS_ATTEMPT)
   }
 
@@ -107,8 +122,12 @@ class UserErrors {
 
     assertThat(
             runCatching {
-                  FailingClient.fromClient(ingressClient, UUID.randomUUID().toString())
-                      .terminallyFailingSideEffect(errorMessage, idempotentCallOptions)
+                  ingressClient
+                      .toVirtualObject<Failing>(UUID.randomUUID().toString())
+                      .request { terminallyFailingSideEffect(errorMessage) }
+                      .options(idempotentCallOptions)
+                      .call()
+                      .response
                 }
                 .exceptionOrNull())
         .hasMessageContaining(errorMessage)

@@ -9,7 +9,9 @@
 package dev.restate.sdktesting.tests
 
 import dev.restate.client.Client
-import dev.restate.sdktesting.contracts.*
+import dev.restate.client.kotlin.response
+import dev.restate.client.kotlin.toVirtualObject
+import dev.restate.sdktesting.contracts.Failing
 import dev.restate.sdktesting.infra.InjectClient
 import dev.restate.sdktesting.infra.RestateDeployerExtension
 import dev.restate.sdktesting.infra.ServiceSpec
@@ -27,8 +29,7 @@ class RunRetry {
   companion object {
     @RegisterExtension
     val deployerExt: RestateDeployerExtension = RestateDeployerExtension {
-      withServiceSpec(
-          ServiceSpec.defaultBuilder().withServices(FailingHandlers.Metadata.SERVICE_NAME))
+      withServiceSpec(ServiceSpec.defaultBuilder().withServices(Failing::class))
     }
   }
 
@@ -39,8 +40,12 @@ class RunRetry {
     val attempts = 3
 
     assertThat(
-            FailingClient.fromClient(ingressClient, UUID.randomUUID().toString())
-                .sideEffectSucceedsAfterGivenAttempts(attempts, idempotentCallOptions))
+            ingressClient
+                .toVirtualObject<Failing>(UUID.randomUUID().toString())
+                .request { sideEffectSucceedsAfterGivenAttempts(attempts) }
+                .options(idempotentCallOptions)
+                .call()
+                .response)
         .isGreaterThanOrEqualTo(attempts)
   }
 
@@ -51,8 +56,12 @@ class RunRetry {
     val attempts = 1
 
     assertThat(
-            FailingClient.fromClient(ingressClient, UUID.randomUUID().toString())
-                .sideEffectFailsAfterGivenAttempts(attempts, idempotentCallOptions))
+            ingressClient
+                .toVirtualObject<Failing>(UUID.randomUUID().toString())
+                .request { sideEffectFailsAfterGivenAttempts(attempts) }
+                .options(idempotentCallOptions)
+                .call()
+                .response)
         .isGreaterThanOrEqualTo(attempts)
   }
 
@@ -63,8 +72,12 @@ class RunRetry {
     val attempts = 3
 
     assertThat(
-            FailingClient.fromClient(ingressClient, UUID.randomUUID().toString())
-                .sideEffectFailsAfterGivenAttempts(attempts, idempotentCallOptions))
+            ingressClient
+                .toVirtualObject<Failing>(UUID.randomUUID().toString())
+                .request { sideEffectFailsAfterGivenAttempts(attempts) }
+                .options(idempotentCallOptions)
+                .call()
+                .response)
         .isGreaterThanOrEqualTo(attempts)
   }
 }

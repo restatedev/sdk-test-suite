@@ -8,22 +8,18 @@
 // https://github.com/restatedev/sdk-test-suite/blob/main/LICENSE
 package dev.restate.sdktesting.contracts
 
-import dev.restate.sdk.annotation.Handler
-import dev.restate.sdk.annotation.VirtualObject
-import dev.restate.sdk.kotlin.ObjectContext
-import jdk.jfr.Name
+import dev.restate.sdk.annotation.*
 
 @VirtualObject
 @Name("Failing")
 interface Failing {
-  @Handler suspend fun terminallyFailingCall(context: ObjectContext, errorMessage: String)
+  @Handler suspend fun terminallyFailingCall(errorMessage: String)
 
-  @Handler
-  suspend fun callTerminallyFailingCall(context: ObjectContext, errorMessage: String): String
+  @Handler suspend fun callTerminallyFailingCall(errorMessage: String): String
 
-  @Handler suspend fun failingCallWithEventualSuccess(context: ObjectContext): Int
+  @Handler suspend fun failingCallWithEventualSuccess(): Int
 
-  @Handler suspend fun terminallyFailingSideEffect(context: ObjectContext, errorMessage: String)
+  @Handler suspend fun terminallyFailingSideEffect(errorMessage: String)
 
   /**
    * `minimumAttempts` should be used to check when to succeed. The retry policy should be
@@ -34,8 +30,7 @@ interface Failing {
    */
   @Handler
   suspend fun sideEffectSucceedsAfterGivenAttempts(
-      context: ObjectContext,
-      minimumAttempts: Int
+      minimumAttempts: Int,
   ): Int
 
   /**
@@ -46,7 +41,6 @@ interface Failing {
    */
   @Handler
   suspend fun sideEffectFailsAfterGivenAttempts(
-      context: ObjectContext,
-      retryPolicyMaxRetryCount: Int
+      retryPolicyMaxRetryCount: Int,
   ): Int
 }

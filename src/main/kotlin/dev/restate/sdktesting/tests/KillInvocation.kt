@@ -11,7 +11,9 @@ package dev.restate.sdktesting.tests
 import dev.restate.admin.api.InvocationApi
 import dev.restate.admin.client.ApiClient
 import dev.restate.client.Client
-import dev.restate.sdktesting.contracts.*
+import dev.restate.client.kotlin.*
+import dev.restate.sdktesting.contracts.AwakeableHolder
+import dev.restate.sdktesting.contracts.KillTest
 import dev.restate.sdktesting.infra.*
 import java.net.URI
 import java.util.UUID
@@ -29,9 +31,7 @@ class KillInvocation {
       withServiceSpec(
           ServiceSpec.defaultBuilder()
               .withServices(
-                  KillTestRunnerHandlers.Metadata.SERVICE_NAME,
-                  KillTestSingletonHandlers.Metadata.SERVICE_NAME,
-                  AwakeableHolderHandlers.Metadata.SERVICE_NAME))
+                  KillTest.Runner::class, KillTest.Singleton::class, AwakeableHolder::class))
     }
   }
 
@@ -39,18 +39,20 @@ class KillInvocation {
   fun kill(@InjectClient ingressClient: Client, @InjectAdminURI adminURI: URI) = runTest {
     val key = UUID.randomUUID().toString()
     val id =
-        KillTestRunnerClient.fromClient(ingressClient, key)
+        ingressClient
+            .toVirtualObject<KillTest.Runner>(key)
+            .request { startCallTree() }
+            .options(idempotentCallOptions)
             .send()
-            .startCallTree(init = idempotentCallOptions)
             .invocationId()
-    val awakeableHolderClient = AwakeableHolderClient.fromClient(ingressClient, key)
+    val awakeableHolderClient = ingressClient.toVirtualObject<AwakeableHolder>(key)
     // With this synchronization point we make sure the call tree has been built before killing it.
     await withAlias
         "awakeable is registered" untilAsserted
         {
-          assertThat(awakeableHolderClient.hasAwakeable()).isTrue()
+          assertThat(awakeableHolderClient.request { hasAwakeable() }.call().response).isTrue()
         }
-    awakeableHolderClient.unlock("cancel", idempotentCallOptions)
+    awakeableHolderClient.request { unlock("cancel") }.options(idempotentCallOptions).call()
 
     // Kill the invocation
     val client = InvocationApi(ApiClient().setHost(adminURI.host).setPort(adminURI.port))
@@ -62,7 +64,7 @@ class KillInvocation {
     await withAlias
         "singleton service is unlocked after killing the call tree" untilAsserted
         {
-          KillTestSingletonClient.fromClient(ingressClient, key).isUnlocked()
+          ingressClient.toVirtualObject<KillTest.Singleton>(key).request { isUnlocked() }.call()
         }
   }
 }
