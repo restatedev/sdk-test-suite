@@ -80,11 +80,17 @@ class TestRunnerOptions : OptionGroup() {
           .help(
               "Pull policy used to pull containers required for testing. In case of ALWAYS, docker won't pull images with repository prefix restate.local or localhost")
           .default(PullPolicy.ALWAYS)
+  val customTestsFile by
+      option("--custom-tests", "--custom-tests-file")
+          .help("File containing the custom tests configurations")
 
   fun applyToDeployerConfig(deployerConfig: RestateDeployerConfig): RestateDeployerConfig {
     var newConfig = deployerConfig
     if (restateContainerImage != null) {
       newConfig = newConfig.copy(restateContainerImage = restateContainerImage!!)
+    }
+    if (customTestsFile != null) {
+      newConfig = newConfig.copy(customTestsFile = customTestsFile!!)
     }
     newConfig = newConfig.copy(imagePullPolicy = imagePullPolicy)
     return newConfig

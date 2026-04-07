@@ -33,6 +33,7 @@ data class RestateDeployerConfig(
     val localAdminPort: Int? = null,
     val localNodePort: Int? = null,
     val retainAfterEnd: Boolean = false,
+    val customTestsFile: String? = null
 ) {
   init {
     check(serviceDeploymentConfig.containsKey(ServiceSpec.DEFAULT_SERVICE_NAME)) {
