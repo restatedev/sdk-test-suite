@@ -21,6 +21,7 @@ import org.apache.logging.log4j.core.config.Configurator
 import org.apache.logging.log4j.core.config.builder.api.ConfigurationBuilderFactory
 import org.apache.logging.log4j.core.config.builder.impl.BuiltConfiguration
 import org.junit.platform.engine.Filter
+import org.junit.platform.engine.discovery.ClassNameFilter
 import org.junit.platform.engine.discovery.DiscoverySelectors
 import org.junit.platform.launcher.*
 import org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder
@@ -63,6 +64,13 @@ class TestSuite(
             .selectors(DiscoverySelectors.selectPackage("dev.restate.sdktesting.tests"))
             .filters(TagFilter.includeTags(junitIncludeTags))
             .filters(*filters.toTypedArray())
+            .filters(
+                *buildList {
+                      if (restateDeployerConfig.customTestsFile == null) {
+                        add(ClassNameFilter.excludeClassNamePatterns(".*\\.Custom"))
+                      }
+                    }
+                    .toTypedArray())
             // Redirect STDOUT/STDERR
             .configurationParameter(LauncherConstants.CAPTURE_STDOUT_PROPERTY_NAME, "true")
             .configurationParameter(LauncherConstants.CAPTURE_STDERR_PROPERTY_NAME, "true")

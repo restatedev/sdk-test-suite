@@ -9,14 +9,14 @@
 package dev.restate.sdktesting.junit
 
 object TestSuites {
-  val DEFAULT_SUITE = TestSuite("default", emptyMap(), "none() | always-suspending")
+  val DEFAULT_SUITE = TestSuite("default", emptyMap(), "none() | always-suspending | customTests")
   val THREE_NODES_SUITE =
       TestSuite(
           "threeNodes",
           mapOf(
               "RESTATE_DEFAULT_NUM_PARTITIONS" to "4",
           ),
-          "(none() | always-suspending) & !only-single-node",
+          "(none() | always-suspending) & !only-single-node & !customTests",
           3)
   private val ALWAYS_SUSPENDING_SUITE =
       TestSuite(
